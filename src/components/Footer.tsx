@@ -63,7 +63,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto border-t border-cream/10 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-cream/40">
         <p>© 2026 Obi Dobi. Todos los derechos reservados.</p>
         <p className="flex items-center gap-1">
-          Hecho con <Heart className="w-3.5 h-3.5 text-logo-red fill-logo-red" /> por y para Debanhi.
+          Hecho con <Heart className="w-3.5 h-3.5 text-logo-red fill-logo-red" /> para Debanhi.
         </p>
       </div>
     </footer>
