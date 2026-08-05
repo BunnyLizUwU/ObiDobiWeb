@@ -8,8 +8,12 @@ import {
   Plus, Minus, Clock, DollarSign, ExternalLink, ShieldCheck 
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
-import { getQuotes, updateQuoteStatus, updateQuoteRevisions, uploadReceiptUrl, getQuoteSettings } from '../../lib/db';
-import { Quote, QuoteStatus, QuoteSettings } from '../../lib/types';
+import { 
+  getQuotes, updateQuoteStatus, updateQuoteRevisions, uploadReceiptUrl, getQuoteSettings,
+  getCategories, getProducts, getMaterials, getProductMaterials, createProduct, deleteProduct,
+  createMaterial, updateMaterial, deleteMaterial
+} from '../../lib/db';
+import { Quote, QuoteStatus, QuoteSettings, Product, Material, Category } from '../../lib/types';
 import LogoBubbles from '../../components/LogoBubbles';
 
 export default function AdminDashboard() {
@@ -21,7 +25,36 @@ export default function AdminDashboard() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [settings, setSettings] = useState<QuoteSettings | null>(null);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'inbox' | 'calendar' | 'clients'>('inbox');
+  const [selectedTab, setSelectedTab] = useState<'inbox' | 'calendar' | 'clients' | 'catalog'>('inbox');
+  
+  // Catalog & Materials States
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [materialsList, setMaterialsList] = useState<Material[]>([]);
+  const [selectedSubTab, setSelectedSubTab] = useState<'products' | 'materials'>('products');
+  
+  // Material Form
+  const [showMaterialForm, setShowMaterialForm] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [matName, setMatName] = useState('');
+  const [matUnit, setMatUnit] = useState('pza');
+  const [matCost, setMatCost] = useState(0);
+  const [matWaste, setMatWaste] = useState(0);
+  
+  // Material Calculator Helper
+  const [useCalcHelper, setUseCalcHelper] = useState(false);
+  const [calcPkgCost, setCalcPkgCost] = useState('');
+  const [calcPkgQty, setCalcPkgQty] = useState('');
+
+  // Product Form
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [prodTitle, setProdTitle] = useState('');
+  const [prodDesc, setProdDesc] = useState('');
+  const [prodCategory, setProdCategory] = useState('');
+  const [prodMinutes, setProdMinutes] = useState(0);
+  const [prodIsDigital, setProdIsDigital] = useState(false);
+  const [prodSelectedMaterials, setProdSelectedMaterials] = useState<Record<string, number>>({});
+
   
   // Filters & Search
   const [statusFilter, setStatusFilter] = useState<string>('todas');
@@ -57,9 +90,18 @@ export default function AdminDashboard() {
   // Cargar datos
   const loadData = async () => {
     try {
-      const [qs, setts] = await Promise.all([getQuotes(), getQuoteSettings()]);
+      const [qs, setts, cats, prods, mats] = await Promise.all([
+        getQuotes(), 
+        getQuoteSettings(),
+        getCategories(),
+        getProducts(),
+        getMaterials()
+      ]);
       setQuotes(qs);
       setSettings(setts);
+      setCategories(cats);
+      setProductsList(prods);
+      setMaterialsList(mats);
       if (qs.length > 0 && !selectedQuoteId) {
         setSelectedQuoteId(qs[0].id);
       }
@@ -159,6 +201,120 @@ export default function AdminDashboard() {
         status: 'anticipo_recibido', 
         payment_receipt_url: 'https://example.com/receipt-placeholder.png' 
       } : q));
+    }
+  };
+
+  // --- GESTIÓN DE MATERIALES ---
+  const handleSaveMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matName.trim()) return;
+
+    let finalCost = matCost;
+    if (useCalcHelper && calcPkgCost && calcPkgQty) {
+      const costVal = parseFloat(calcPkgCost) || 0;
+      const qtyVal = parseFloat(calcPkgQty) || 0;
+      if (qtyVal > 0) {
+        finalCost = costVal / qtyVal;
+      }
+    }
+
+    if (editingMaterial) {
+      const updated: Material = {
+        ...editingMaterial,
+        name: matName,
+        unit_measure: matUnit,
+        unit_cost: finalCost,
+        waste_percentage: matWaste
+      };
+      const ok = await updateMaterial(updated);
+      if (ok) {
+        setMaterialsList(prev => prev.map(m => m.id === editingMaterial.id ? updated : m));
+        setShowMaterialForm(false);
+        setEditingMaterial(null);
+      }
+    } else {
+      const data: Omit<Material, 'id'> = {
+        name: matName,
+        unit_measure: matUnit,
+        unit_cost: finalCost,
+        waste_percentage: matWaste
+      };
+      const created = await createMaterial(data);
+      if (created) {
+        setMaterialsList(prev => [...prev, created]);
+        setShowMaterialForm(false);
+      }
+    }
+    // Limpiar formulario
+    setMatName('');
+    setMatCost(0);
+    setMatWaste(0);
+    setMatUnit('pza');
+    setUseCalcHelper(false);
+    setCalcPkgCost('');
+    setCalcPkgQty('');
+  };
+
+  const handleEditMaterialClick = (material: Material) => {
+    setEditingMaterial(material);
+    setMatName(material.name);
+    setMatUnit(material.unit_measure);
+    setMatCost(material.unit_cost);
+    setMatWaste(material.waste_percentage);
+    setUseCalcHelper(false);
+    setShowMaterialForm(true);
+  };
+
+  const handleDeleteMaterialClick = async (id: string) => {
+    if (!confirm('¿Estás segura de eliminar este material? Esto afectará las cotizaciones de los productos que lo utilicen.')) return;
+    const ok = await deleteMaterial(id);
+    if (ok) {
+      setMaterialsList(prev => prev.filter(m => m.id !== id));
+    }
+  };
+
+  // --- GESTIÓN DE PRODUCTOS ---
+  const handleSaveProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prodTitle.trim()) return;
+
+    // Compilar relaciones de materiales seleccionados
+    const materialsMapping = Object.entries(prodSelectedMaterials)
+      .filter(([_, qty]) => qty > 0)
+      .map(([matId, qty]) => ({
+        materialId: matId,
+        quantity: qty
+      }));
+
+    const data: Omit<Product, 'id'> = {
+      title: prodTitle,
+      description: prodDesc,
+      category_id: prodCategory || categories[0]?.id || '',
+      estimated_minutes: prodMinutes,
+      is_digital: prodIsDigital,
+      images: ['/placeholder_producto.png']
+    };
+
+    const created = await createProduct(data, materialsMapping);
+    if (created) {
+      setProductsList(prev => [...prev, created]);
+      setShowProductForm(false);
+      
+      // Limpiar formulario
+      setProdTitle('');
+      setProdDesc('');
+      setProdCategory(categories[0]?.id || '');
+      setProdMinutes(0);
+      setProdIsDigital(false);
+      setProdSelectedMaterials({});
+    }
+  };
+
+  const handleDeleteProductClick = async (id: string) => {
+    if (!confirm('¿Estás segura de eliminar este producto del catálogo?')) return;
+    const ok = await deleteProduct(id);
+    if (ok) {
+      setProductsList(prev => prev.filter(p => p.id !== id));
     }
   };
 
@@ -291,6 +447,16 @@ export default function AdminDashboard() {
         >
           <Users className="w-4 h-4" />
           Directorio de Clientes ({getClientDirectory().length})
+        </button>
+
+        <button
+          onClick={() => setSelectedTab('catalog')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all ${
+            selectedTab === 'catalog' ? 'bg-forest text-cream shadow' : 'text-forest/70 hover:bg-forest/5'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Catálogo & Insumos
         </button>
       </div>
 
@@ -686,6 +852,394 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 4. GESTIÓN DE CATÁLOGO Y MATERIALES */}
+        {selectedTab === 'catalog' && (
+          <div className="flex-1 bg-cream p-6 overflow-y-auto">
+            <div className="max-w-5xl mx-auto flex flex-col gap-6">
+              
+              {/* Encabezado y Sub-Navegación */}
+              <div className="bg-white rounded-3xl border border-forest/5 p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-xl font-extrabold text-forest mb-1">Catálogo e Insumos</h2>
+                  <p className="text-xs text-forest/50">Crea nuevos productos y gestiona los precios base de los materiales para el cotizador.</p>
+                </div>
+                <div className="flex bg-cream p-1.5 rounded-2xl gap-1 shrink-0 border border-forest/5">
+                  <button
+                    onClick={() => { setSelectedSubTab('products'); setShowProductForm(false); }}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                      selectedSubTab === 'products' ? 'bg-forest text-cream shadow-sm' : 'text-forest/70 hover:bg-forest/5'
+                    }`}
+                  >
+                    Productos
+                  </button>
+                  <button
+                    onClick={() => { setSelectedSubTab('materials'); setShowMaterialForm(false); }}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                      selectedSubTab === 'materials' ? 'bg-forest text-cream shadow-sm' : 'text-forest/70 hover:bg-forest/5'
+                    }`}
+                  >
+                    Materiales / Insumos
+                  </button>
+                </div>
+              </div>
+
+              {/* CONTENIDO PRODUCTOS */}
+              {selectedSubTab === 'products' && (
+                <div className="bg-white rounded-3xl border border-forest/5 p-6 shadow-sm">
+                  {!showProductForm ? (
+                    <>
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-black text-forest uppercase tracking-wider">Productos del Catálogo</h3>
+                        <button
+                          onClick={() => {
+                            setProdTitle('');
+                            setProdDesc('');
+                            setProdCategory(categories[0]?.id || '');
+                            setProdMinutes(30);
+                            setProdIsDigital(false);
+                            setProdSelectedMaterials({});
+                            setShowProductForm(true);
+                          }}
+                          className="flex items-center gap-1 px-4 py-2 bg-logo-pink text-white text-xs font-black uppercase tracking-wider rounded-xl hover:bg-logo-pink/90 transition-all shadow-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Agregar Producto
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-forest/10 text-xs font-bold text-forest/40 uppercase">
+                              <th className="py-3 px-4">Producto</th>
+                              <th className="py-3 px-4">Categoría</th>
+                              <th className="py-3 px-4 text-center">Labor (Mins)</th>
+                              <th className="py-3 px-4 text-center">Tipo</th>
+                              <th className="py-3 px-4 text-right">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-forest/5 text-xs text-forest/80">
+                            {productsList.map((p) => {
+                              const categoryName = categories.find(c => c.id === p.category_id)?.name || 'Sin Categoría';
+                              return (
+                                <tr key={p.id} className="hover:bg-cream/40">
+                                  <td className="py-4 px-4 font-bold text-forest flex items-center gap-2">
+                                    <span className="text-base">📦</span>
+                                    {p.title}
+                                  </td>
+                                  <td className="py-4 px-4 font-semibold text-forest/70">{categoryName}</td>
+                                  <td className="py-4 px-4 text-center font-mono font-bold">{p.estimated_minutes} min</td>
+                                  <td className="py-4 px-4 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                      p.is_digital ? 'bg-primary-blue/15 text-primary-blue' : 'bg-logo-green/15 text-logo-green'
+                                    }`}>
+                                      {p.is_digital ? 'Digital' : 'Físico'}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 text-right">
+                                    <button
+                                      onClick={() => handleDeleteProductClick(p.id)}
+                                      className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-logo-red bg-logo-red/10 hover:bg-logo-red hover:text-white rounded-lg transition-all"
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    // FORMULARIO CREAR PRODUCTO
+                    <form onSubmit={handleSaveProduct} className="flex flex-col gap-6 max-w-2xl mx-auto">
+                      <h3 className="text-base font-black text-forest border-b border-forest/10 pb-2">Agregar Nuevo Producto al Catálogo</h3>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Título del Producto</label>
+                          <input type="text" required placeholder="ej. Pastel Personalizado de Boda" value={prodTitle} onChange={(e) => setProdTitle(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Categoría</label>
+                          <select value={prodCategory} onChange={(e) => setProdCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink">
+                            {categories.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Descripción</label>
+                        <textarea required placeholder="Escribe para qué sirve y qué incluye..." value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-forest/15 text-sm font-medium focus:outline-none focus:border-logo-pink h-20" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Tiempo Estimado de Trabajo (Minutos)</label>
+                          <input type="number" min={5} required value={prodMinutes} onChange={(e) => setProdMinutes(parseInt(e.target.value) || 0)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
+                        </div>
+                        <div className="flex items-center mt-6">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                            <input type="checkbox" checked={prodIsDigital} onChange={(e) => setProdIsDigital(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                            ¿Es un producto Digital? (ej. Invitación en web)
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* ASOCIACIÓN DE INSUMOS */}
+                      <div className="border-t border-dashed border-forest/10 pt-4">
+                        <h4 className="text-xs font-black uppercase text-forest/60 tracking-wider mb-3">Insumos y Materiales Utilizados (Para Cotización)</h4>
+                        <p className="text-[10px] text-forest/40 mb-4">Marca los materiales que consume la unidad de este producto y la cantidad exacta que usa.</p>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-60 overflow-y-auto border border-forest/5 p-4 rounded-2xl bg-cream/20">
+                          {materialsList.map(mat => {
+                            const isChecked = prodSelectedMaterials[mat.id] !== undefined;
+                            const qty = prodSelectedMaterials[mat.id] || 0;
+                            return (
+                              <div key={mat.id} className="flex items-center justify-between gap-2 p-2 border-b border-forest/5 text-xs">
+                                <label className="flex items-center gap-2 font-semibold text-forest cursor-pointer shrink-0 max-w-[200px] truncate">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setProdSelectedMaterials(prev => ({ ...prev, [mat.id]: mat.unit_measure === 'pza' ? 1 : 0.5 }));
+                                      } else {
+                                        setProdSelectedMaterials(prev => {
+                                          const copy = { ...prev };
+                                          delete copy[mat.id];
+                                          return copy;
+                                        });
+                                      }
+                                    }}
+                                    className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink"
+                                  />
+                                  {mat.name}
+                                </label>
+
+                                {isChecked && (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step="0.0001"
+                                      min="0.0001"
+                                      value={qty}
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setProdSelectedMaterials(prev => ({ ...prev, [mat.id]: val }));
+                                      }}
+                                      className="w-16 px-1.5 py-1 text-center font-bold border border-forest/20 rounded bg-white text-forest"
+                                    />
+                                    <span className="text-[10px] text-forest/50 font-bold">{mat.unit_measure}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 border-t border-forest/10 pt-4 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowProductForm(false)}
+                          className="px-5 py-2.5 border border-forest/10 hover:bg-forest/5 text-forest text-xs font-black uppercase rounded-xl transition-all"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 bg-forest text-cream text-xs font-black uppercase rounded-xl hover:bg-forest/90 transition-all shadow-md"
+                        >
+                          Guardar Producto
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* CONTENIDO MATERIALES */}
+              {selectedSubTab === 'materials' && (
+                <div className="bg-white rounded-3xl border border-forest/5 p-6 shadow-sm">
+                  {!showMaterialForm ? (
+                    <>
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-black text-forest uppercase tracking-wider">Inventario de Materiales & Costos</h3>
+                        <button
+                          onClick={() => {
+                            setEditingMaterial(null);
+                            setMatName('');
+                            setMatUnit('pza');
+                            setMatCost(0);
+                            setMatWaste(0);
+                            setUseCalcHelper(false);
+                            setCalcPkgCost('');
+                            setCalcPkgQty('');
+                            setShowMaterialForm(true);
+                          }}
+                          className="flex items-center gap-1 px-4 py-2 bg-logo-green text-forest text-xs font-black uppercase tracking-wider rounded-xl hover:bg-logo-green/90 transition-all shadow-sm"
+                        >
+                          <Plus className="w-4 h-4 text-forest" />
+                          Crear Insumo
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-forest/10 text-xs font-bold text-forest/40 uppercase">
+                              <th className="py-3 px-4">Material / Insumo</th>
+                              <th className="py-3 px-4 text-center">U. Medida</th>
+                              <th className="py-3 px-4 text-right">Costo Unitario ($)</th>
+                              <th className="py-3 px-4 text-center">Merma (%)</th>
+                              <th className="py-3 px-4 text-right">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-forest/5 text-xs text-forest/80">
+                            {materialsList.map((m) => (
+                              <tr key={m.id} className="hover:bg-cream/40">
+                                <td className="py-4 px-4 font-bold text-forest">{m.name}</td>
+                                <td className="py-4 px-4 text-center font-mono">{m.unit_measure}</td>
+                                <td className="py-4 px-4 text-right font-mono font-bold text-logo-pink">${Number(m.unit_cost).toFixed(2)} MXN</td>
+                                <td className="py-4 px-4 text-center font-mono">{m.waste_percentage}%</td>
+                                <td className="py-4 px-4 text-right flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleEditMaterialClick(m)}
+                                    className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-forest bg-logo-yellow/20 hover:bg-logo-yellow rounded-lg transition-all"
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteMaterialClick(m.id)}
+                                    className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-logo-red bg-logo-red/10 hover:bg-logo-red hover:text-white rounded-lg transition-all"
+                                  >
+                                    Eliminar
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    // FORMULARIO CREAR/EDITAR MATERIAL
+                    <form onSubmit={handleSaveMaterial} className="flex flex-col gap-6 max-w-2xl mx-auto">
+                      <h3 className="text-base font-black text-forest border-b border-forest/10 pb-2">
+                        {editingMaterial ? `Editar Insumo: ${editingMaterial.name}` : 'Crear Nuevo Insumo / Material'}
+                      </h3>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Nombre del Insumo</label>
+                          <input type="text" required placeholder="ej. Acrílico Circular 5cm, Harina" value={matName} onChange={(e) => setMatName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Unidad de Medida</label>
+                          <select value={matUnit} onChange={(e) => setMatUnit(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink">
+                            <option value="pza">Pieza (pza)</option>
+                            <option value="g">Gramo (g)</option>
+                            <option value="m">Metro (m)</option>
+                            <option value="ml">Mililitro (ml)</option>
+                            <option value="cm2">Centímetro Cuadrado (cm²)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* AYUDANTE DE COSTO PROPORCIONAL */}
+                      <div className="bg-cream/40 p-4 rounded-2xl border border-forest/5 flex flex-col gap-3">
+                        <label className="flex items-center gap-2 text-xs font-black uppercase text-forest/60 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={useCalcHelper}
+                            onChange={(e) => setUseCalcHelper(e.target.checked)}
+                            className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink"
+                          />
+                          Calcular costo unitario proporcional (por empaque/paquete)
+                        </label>
+                        
+                        {useCalcHelper && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn">
+                            <div>
+                              <label className="block text-[10px] font-bold text-forest/50 uppercase mb-1">Precio Total del Paquete ($)</label>
+                              <input
+                                type="number"
+                                placeholder="ej. 30 (precio de bolsa harina)"
+                                value={calcPkgCost}
+                                onChange={(e) => setCalcPkgCost(e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-lg border border-forest/15 bg-white text-xs font-semibold"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-forest/50 uppercase mb-1">Contenido / Cantidad en Paquete</label>
+                              <div className="flex items-center gap-1.5 bg-white border border-forest/15 rounded-lg px-3 py-1">
+                                <input
+                                  type="number"
+                                  placeholder="ej. 1000"
+                                  value={calcPkgQty}
+                                  onChange={(e) => setCalcPkgQty(e.target.value)}
+                                  className="w-full text-xs font-semibold focus:outline-none"
+                                />
+                                <span className="text-[10px] text-forest/40 font-bold">{matUnit}</span>
+                              </div>
+                            </div>
+                            
+                            {calcPkgCost && calcPkgQty && parseFloat(calcPkgQty) > 0 && (
+                              <div className="sm:col-span-2 text-xs font-bold text-logo-pink p-2 bg-logo-pink/5 rounded-lg">
+                                Costo Unitario Calculado: ${(parseFloat(calcPkgCost) / parseFloat(calcPkgQty)).toFixed(4)} MXN por {matUnit}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Costo Unitario ($ MXN)</label>
+                          <input
+                            type="number"
+                            step="0.0001"
+                            required
+                            disabled={useCalcHelper}
+                            placeholder="ej. 0.03"
+                            value={useCalcHelper && calcPkgCost && calcPkgQty && parseFloat(calcPkgQty) > 0 ? (parseFloat(calcPkgCost) / parseFloat(calcPkgQty)).toFixed(4) : matCost}
+                            onChange={(e) => setMatCost(parseFloat(e.target.value) || 0)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold bg-white text-forest focus:outline-none disabled:bg-forest/5 disabled:text-forest/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Porcentaje de Merma / Desperdicio (%)</label>
+                          <input type="number" min={0} max={100} required placeholder="ej. 10" value={matWaste} onChange={(e) => setMatWaste(parseFloat(e.target.value) || 0)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 border-t border-forest/10 pt-4 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setShowMaterialForm(false); setEditingMaterial(null); }}
+                          className="px-5 py-2.5 border border-forest/10 hover:bg-forest/5 text-forest text-xs font-black uppercase rounded-xl transition-all"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2.5 bg-forest text-cream text-xs font-black uppercase rounded-xl hover:bg-forest/90 transition-all shadow-md"
+                        >
+                          {editingMaterial ? 'Actualizar Insumo' : 'Guardar Insumo'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

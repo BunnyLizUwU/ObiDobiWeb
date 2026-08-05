@@ -31,6 +31,25 @@ function QuoteCalculatorContent() {
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia' | 'tarjeta'>('efectivo');
   const [notes, setNotes] = useState('');
 
+  // Dynamic options states
+  const [stickerWidth, setStickerWidth] = useState(5);
+  const [stickerHeight, setStickerHeight] = useState(5);
+  const [stickerFinish, setStickerFinish] = useState<'brillante' | 'mate' | 'holografico'>('brillante');
+  const [extraAcrylic, setExtraAcrylic] = useState(false);
+  const [ribbonColor, setRibbonColor] = useState('Rosa Pastel');
+  const [keychainDesignNotes, setKeychainDesignNotes] = useState('');
+  const [doubleSided, setDoubleSided] = useState(false);
+  const [toteFabricType, setToteFabricType] = useState<'standard' | 'premium'>('standard');
+  const [servings, setServings] = useState(15);
+  const [tiersCount, setTiersCount] = useState(1);
+  const [decorationComplexity, setDecorationComplexity] = useState<'simple' | 'detallado' | 'fondant'>('simple');
+  const [flavor, setFlavor] = useState('Vainilla');
+  const [filling, setFilling] = useState('Crema con Fresa');
+  const [invitationRSVP, setInvitationRSVP] = useState(true);
+  const [invitationGPS, setInvitationGPS] = useState(true);
+  const [invitationCountdown, setInvitationCountdown] = useState(true);
+  const [invitationGiftRegistry, setInvitationGiftRegistry] = useState(true);
+
   // UI / Calculation states
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,7 +77,8 @@ function QuoteCalculatorContent() {
             const cat = urlProductSlug === 'invitaciones-digitales' && p.title.toLowerCase().includes('invitaci')
               || urlProductSlug === 'tote-bags' && p.title.toLowerCase().includes('tote')
               || urlProductSlug === 'stickers' && p.title.toLowerCase().includes('stickers')
-              || urlProductSlug === 'llaveros-resina' && p.title.toLowerCase().includes('llavero');
+              || urlProductSlug === 'llaveros-resina' && p.title.toLowerCase().includes('llavero')
+              || urlProductSlug === 'postres-personalizados' && p.title.toLowerCase().includes('pastel');
             return cat;
           });
           if (matched) {
@@ -108,10 +128,38 @@ function QuoteCalculatorContent() {
       urgencyLevel,
       deliveryType,
       paymentMethod,
-      settings
+      settings,
+      options: {
+        stickerWidth,
+        stickerHeight,
+        stickerFinish,
+        extraAcrylic,
+        doubleSided,
+        servings,
+        tiersCount,
+        decorationComplexity
+      }
     });
     setBreakdown(res);
-  }, [selectedProductId, productMaterials, quantity, extraRevisions, urgencyLevel, deliveryType, paymentMethod, products, settings]);
+  }, [
+    selectedProductId, 
+    productMaterials, 
+    quantity, 
+    extraRevisions, 
+    urgencyLevel, 
+    deliveryType, 
+    paymentMethod, 
+    products, 
+    settings,
+    stickerWidth,
+    stickerHeight,
+    stickerFinish,
+    extraAcrylic,
+    doubleSided,
+    servings,
+    tiersCount,
+    decorationComplexity
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +169,42 @@ function QuoteCalculatorContent() {
     const product = products.find(p => p.id === selectedProductId)!;
 
     try {
+      // Compilar especificaciones de personalización en las notas para guardarlo en la DB
+      let compiledNotes = notes;
+      const isSticker = product.category_id === 'cat-3' || product.title.toLowerCase().includes('sticker');
+      const isKeychain = product.category_id === 'cat-4' || product.title.toLowerCase().includes('llavero');
+      const isDessert = product.category_id === 'cat-5' || product.title.toLowerCase().includes('pastel') || product.title.toLowerCase().includes('cupcake');
+      const isToteBag = product.category_id === 'cat-2' || product.title.toLowerCase().includes('tote');
+      const isInvitation = product.category_id === 'cat-1' || product.title.toLowerCase().includes('invitaci');
+
+      const customSpecs: string[] = [];
+      if (isInvitation) {
+        customSpecs.push(`RSVP: ${invitationRSVP ? 'Sí' : 'No'}`);
+        customSpecs.push(`GPS: ${invitationGPS ? 'Sí' : 'No'}`);
+        customSpecs.push(`Cuenta regresiva: ${invitationCountdown ? 'Sí' : 'No'}`);
+        customSpecs.push(`Mesa regalos: ${invitationGiftRegistry ? 'Sí' : 'No'}`);
+      } else if (isToteBag) {
+        customSpecs.push(`Doble Cara: ${doubleSided ? 'Sí' : 'No'}`);
+        customSpecs.push(`Tela: ${toteFabricType === 'standard' ? 'Estándar' : 'Premium'}`);
+      } else if (isSticker) {
+        customSpecs.push(`Tamaño: ${stickerWidth}x${stickerHeight} cm`);
+        customSpecs.push(`Acabado: ${stickerFinish}`);
+      } else if (isKeychain) {
+        customSpecs.push(`Listón: ${ribbonColor}`);
+        customSpecs.push(`Placa extra: ${extraAcrylic ? 'Sí' : 'No'}`);
+        if (keychainDesignNotes) customSpecs.push(`Diseño: ${keychainDesignNotes}`);
+      } else if (isDessert) {
+        customSpecs.push(`Porciones: ${servings}`);
+        customSpecs.push(`Pisos: ${tiersCount}`);
+        customSpecs.push(`Complejidad: ${decorationComplexity}`);
+        customSpecs.push(`Sabor: ${flavor}`);
+        customSpecs.push(`Relleno: ${filling}`);
+      }
+
+      if (customSpecs.length > 0) {
+        compiledNotes = `[Especificaciones: ${customSpecs.join(', ')}]` + (notes ? `\nNotas adicionales: ${notes}` : '');
+      }
+
       const quoteData: Omit<Quote, 'id' | 'folio' | 'created_at'> = {
         client_name: clientName,
         client_phone: clientPhone,
@@ -134,7 +218,7 @@ function QuoteCalculatorContent() {
         included_revisions: settings?.included_revisions || 2,
         extra_revisions_count: extraRevisions,
         extra_revisions_cost: breakdown.revisionsCost,
-        notes: notes,
+        notes: compiledNotes,
         product_title: product.title,
         quantity: quantity
       };
@@ -160,8 +244,12 @@ function QuoteCalculatorContent() {
     if (!successQuote || !breakdown) return;
 
     const urgencyLabels = { normal: 'Normal (3-5 días)', express: 'Express (24-48h)', urgente: 'Urgente (Mismo día)' };
-    const deliveryLabels = { taller: 'Recoger en Taller ($0)', local: 'Envío Local', nacional: 'Envío Nacional / Paquetería' };
-    const paymentLabels = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta' };
+    const deliveryLabels = { 
+      taller: 'Recoger en Taller ($0)', 
+      local: `Envío Local Acámbaro ($${settings?.local_delivery_fee || 40})`, 
+      nacional: `Envío Nacional / Paquetería ($${settings?.national_shipping_fee || 80})` 
+    };
+    const paymentLabels = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta (Comisión +4%)' };
 
     const text = `✨ *NUEVA SOLICITUD DE COTIZACIÓN - OBI DOBI* ✨\n\n` +
       `*Folio:* #${successQuote.folio}\n` +
@@ -179,7 +267,8 @@ function QuoteCalculatorContent() {
       `*Total estimado:* $${breakdown.total.toFixed(2)} MXN\n` +
       `*Anticipo Requerido (50%):* $${breakdown.depositRequired.toFixed(2)} MXN\n` +
       `*Saldo contra entrega (50%):* $${breakdown.balanceDue.toFixed(2)} MXN\n\n` +
-      `*Notas:* ${successQuote.notes || 'Ninguna'}\n\n` +
+      `*Detalles del Pedido:*\n` +
+      `${successQuote.notes || 'Ninguna'}\n\n` +
       `_Tiempos de entrega inician al confirmar anticipo y aprobar boceto final._`;
 
     const encoded = encodeURIComponent(text);
@@ -385,6 +474,139 @@ function QuoteCalculatorContent() {
           </div>
         </div>
 
+        {/* DYNAMIC CATEGORY OPTIONS */}
+        {selectedProductId && (
+          <div className="border-t border-dashed border-forest/10 pt-4 flex flex-col gap-4">
+            <h3 className="text-sm font-bold text-forest uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-logo-pink" />
+              Especificaciones de Personalización
+            </h3>
+            
+            {/* Si es Invitación Digital */}
+            {(products.find(p => p.id === selectedProductId)?.category_id === 'cat-1' || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('invitaci')) && (
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                  <input type="checkbox" checked={invitationRSVP} onChange={(e) => setInvitationRSVP(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                  Confirmación RSVP WhatsApp
+                </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                  <input type="checkbox" checked={invitationGPS} onChange={(e) => setInvitationGPS(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                  Ubicación GPS (Mapas)
+                </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                  <input type="checkbox" checked={invitationCountdown} onChange={(e) => setInvitationCountdown(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                  Cuenta Regresiva
+                </label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                  <input type="checkbox" checked={invitationGiftRegistry} onChange={(e) => setInvitationGiftRegistry(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                  Mesa de Regalos
+                </label>
+              </div>
+            )}
+
+            {/* Si es Totebag */}
+            {(products.find(p => p.id === selectedProductId)?.category_id === 'cat-2' || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('tote')) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Calidad de Tela Canvas</label>
+                  <select value={toteFabricType} onChange={(e) => setToteFabricType(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold">
+                    <option value="standard">Estándar (Algodón rústico)</option>
+                    <option value="premium">Premium (Canvas grueso peinado)</option>
+                  </select>
+                </div>
+                <div className="flex items-center mt-6">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                    <input type="checkbox" checked={doubleSided} onChange={(e) => setDoubleSided(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                    Estampado Doble Cara (+ tiempo/hoja)
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Si es Sticker */}
+            {(products.find(p => p.id === selectedProductId)?.category_id === 'cat-3' || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('sticker')) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Acabado del Sticker</label>
+                  <select value={stickerFinish} onChange={(e) => setStickerFinish(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold">
+                    <option value="brillante">Brillante (Estándar)</option>
+                    <option value="mate">Mate Suave</option>
+                    <option value="holografico">Holográfico Premium (Arcoíris)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Ancho Estimado (cm)</label>
+                  <input type="number" min={1} max={20} value={stickerWidth} onChange={(e) => setStickerWidth(Math.max(1, parseFloat(e.target.value) || 1))} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Alto Estimado (cm)</label>
+                  <input type="number" min={1} max={28} value={stickerHeight} onChange={(e) => setStickerHeight(Math.max(1, parseFloat(e.target.value) || 1))} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                </div>
+              </div>
+            )}
+
+            {/* Si es Llavero */}
+            {(products.find(p => p.id === selectedProductId)?.category_id === 'cat-4' || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('llavero')) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Color del Listón</label>
+                  <input type="text" placeholder="ej. Rosa Pastel, Oro, Azul" value={ribbonColor} onChange={(e) => setRibbonColor(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Texto en el Acrílico</label>
+                  <input type="text" placeholder="ej. Inicial M, Logotipo" value={keychainDesignNotes} onChange={(e) => setKeychainDesignNotes(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                </div>
+                <div className="flex items-center mt-6">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-forest cursor-pointer">
+                    <input type="checkbox" checked={extraAcrylic} onChange={(e) => setExtraAcrylic(e.target.checked)} className="rounded border-forest/20 text-logo-pink focus:ring-logo-pink" />
+                    Placa Acrílica Extra (+ insumos)
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Si es Repostería / Postre */}
+            {(products.find(p => p.id === selectedProductId)?.category_id === 'cat-5' || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('pastel') || 
+              products.find(p => p.id === selectedProductId)?.title.toLowerCase().includes('cupcake')) && (
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Número de Porciones</label>
+                    <input type="number" min={5} max={200} value={servings} onChange={(e) => setServings(Math.max(5, parseInt(e.target.value) || 10))} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Pisos del Pastel</label>
+                    <input type="number" min={1} max={5} value={tiersCount} onChange={(e) => setTiersCount(Math.max(1, parseInt(e.target.value) || 1))} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Complejidad Decoración</label>
+                    <select value={decorationComplexity} onChange={(e) => setDecorationComplexity(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold">
+                      <option value="simple">Simple (Buttercream Liso)</option>
+                      <option value="detallado">Detallado (Decoración buttercream, +20%)</option>
+                      <option value="fondant">Modelado Fondant (Azúcar artístico, +50%)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Sabor del Pan</label>
+                    <input type="text" placeholder="ej. Vainilla, Tres Leches, Chocolate" value={flavor} onChange={(e) => setFlavor(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Relleno del Pastel</label>
+                    <input type="text" placeholder="ej. Fresa, Nutella, Durazno" value={filling} onChange={(e) => setFilling(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Correcciones y Factores de Costo */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-forest/5 pt-4">
           <div>
@@ -413,7 +635,7 @@ function QuoteCalculatorContent() {
             >
               <option value="taller">Recoger en Taller ($0)</option>
               <option value="local">Envío Local Acámbaro (+${settings?.local_delivery_fee || 40})</option>
-              <option value="nacional">Paquetería Nacional (+${settings?.national_shipping_fee || 180})</option>
+              <option value="nacional">Paquetería Nacional (+${settings?.national_shipping_fee || 80})</option>
             </select>
           </div>
 

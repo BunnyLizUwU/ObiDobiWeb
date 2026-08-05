@@ -26,7 +26,7 @@ CREATE TABLE products (
 CREATE TABLE materials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    unit_measure VARCHAR(50) NOT NULL, -- ej: "pza", "ml", "g", "cm2"
+    unit_measure VARCHAR(50) NOT NULL, -- ej: "pza", "ml", "g", "cm2", "m"
     unit_cost NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     waste_percentage NUMERIC(5, 2) NOT NULL DEFAULT 0.00 -- Porcentaje de merma, ej: 10.00 para 10%
 );
@@ -50,7 +50,7 @@ CREATE TABLE quote_settings (
     express_surcharge NUMERIC(5, 2) NOT NULL DEFAULT 25.00, -- Recargo Express (+25%)
     urgent_surcharge NUMERIC(5, 2) NOT NULL DEFAULT 50.00, -- Recargo Urgente (+50%)
     local_delivery_fee NUMERIC(10, 2) NOT NULL DEFAULT 40.00, -- Costo de envío local
-    national_shipping_fee NUMERIC(10, 2) NOT NULL DEFAULT 180.00 -- Costo de envío foráneo
+    national_shipping_fee NUMERIC(10, 2) NOT NULL DEFAULT 80.00 -- Costo de envío foráneo (actualizado a 80)
 );
 
 -- 6. Cotizaciones y Pedidos
@@ -123,9 +123,9 @@ CREATE POLICY "Permitir visualización y edición completa a administradores" ON
 -- SEED DATA (Datos Iniciales)
 -- ==========================================
 
--- Insertar configuración por defecto
+-- Insertar configuración por defecto (Envío nacional = 80)
 INSERT INTO quote_settings (id, hourly_rate, indirect_cost_percentage, default_profit_margin, included_revisions, extra_revision_fee, express_surcharge, urgent_surcharge, local_delivery_fee, national_shipping_fee)
-VALUES (1, 120.00, 15.00, 40.00, 2, 50.00, 25.00, 50.00, 40.00, 180.00)
+VALUES (1, 120.00, 15.00, 40.00, 2, 50.00, 25.00, 50.00, 40.00, 80.00)
 ON CONFLICT (id) DO NOTHING;
 
 -- Insertar Categorías
@@ -133,24 +133,26 @@ INSERT INTO categories (name, description, slug) VALUES
 ('Invitaciones Digitales', 'Invitaciones interactivas para bodas, XV años, cumpleaños y eventos corporativos con RSVP, GPS y cuenta regresiva.', 'invitaciones-digitales'),
 ('Totebags Sublimadas', 'Bolsas de tela canvas ecológicas y duraderas con diseños personalizados y sublimación premium.', 'tote-bags'),
 ('Stickers Personalizados', 'Pegatinas de alta calidad con cortes precisos en diferentes acabados: brillante, mate y holográfico.', 'stickers'),
-('Llaveros de Resina', 'Accesorios de resina epóxica hechos a mano, personalizados con flores secas, glitter y letras de colores.', 'llaveros-resina');
+('Llaveros de Listón y Acrílico', 'Llaveros elegantes elaborados con listón de colores, argolla y placa acrílica circular grabada o decorada.', 'llaveros-resina'),
+('Postres Personalizados', 'Pasteles de fondant, buttercream, cupcakes y galletas decoradas para tus eventos especiales.', 'postres-personalizados');
 
--- Guardamos los IDs de categorías para referencias posteriores
--- (Hacemos select manual al insertar o usamos subqueries)
-
--- Insertar Materiales
+-- Insertar Materiales ( keychain y repostería agregados)
 INSERT INTO materials (name, unit_measure, unit_cost, waste_percentage) VALUES
-('Resina Epóxica A+B', 'g', 0.45, 5.00), -- 0.45 MXN por gramo, 5% merma
-('Molde y Herraje de Llavero', 'pza', 15.00, 2.00),
-('Glitter y Decoraciones', 'g', 1.20, 10.00),
+('Listón de Organza/Raso (m)', 'm', 4.50, 10.00), -- Costo por metro, 10% merma
+('Argolla y Cadena de Llavero', 'pza', 3.50, 2.00),
+('Acrílico Circular 5cm', 'pza', 9.00, 5.00),
+('Vinilo Autoadhesivo de Recorte (diseño)', 'pza', 5.00, 10.00),
 ('Bolsa Tote Bag Canvas Lisa', 'pza', 32.00, 0.00),
 ('Hoja de Transfer / Sublimación A4', 'pza', 8.50, 10.00),
 ('Vinilo Adhesivo Holográfico A4', 'pza', 18.00, 15.00),
 ('Papel Fotográfico Autoadhesivo A4', 'pza', 6.00, 8.00),
-('Hospedaje Digital Invitación (por año)', 'pza', 50.00, 0.00);
+('Hospedaje Digital Invitación (por año)', 'pza', 50.00, 0.00),
+('Mezcla Base de Pastel (Harina/Huevo/Mantequilla) (g)', 'g', 0.08, 5.00), -- 0.08 MXN por gramo
+('Fondant y Coberturas (g)', 'g', 0.12, 15.00),
+('Caja de Pastel y Soporte', 'pza', 18.00, 0.00);
 
 -- Insertar Productos
--- Invitación Digital
+-- 1. Invitación Digital
 INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
 VALUES (
     (SELECT id FROM categories WHERE slug = 'invitaciones-digitales'),
@@ -158,10 +160,10 @@ VALUES (
     'Invitación interactiva para dispositivos móviles. Incluye cuenta regresiva, confirmación automática de asistencia por WhatsApp, ubicación con Google Maps, enlaces a mesa de regalos y galería de fotos.',
     '["/placeholder_invitacion.png"]'::jsonb,
     TRUE,
-    180 -- 3 horas de mano de obra
+    180
 );
 
--- Tote Bag
+-- 2. Tote Bag
 INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
 VALUES (
     (SELECT id FROM categories WHERE slug = 'tote-bags'),
@@ -169,10 +171,10 @@ VALUES (
     'Bolsa de tela de algodón (canvas) resistente con impresión de alta calidad mediante técnica de sublimación. Medidas estándar 35x40cm.',
     '["/placeholder_totebag.png"]'::jsonb,
     FALSE,
-    45 -- 45 minutos de mano de obra
+    45
 );
 
--- Stickers
+-- 3. Stickers
 INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
 VALUES (
     (SELECT id FROM categories WHERE slug = 'stickers'),
@@ -180,36 +182,72 @@ VALUES (
     'Planilla tamaño A4 de stickers personalizados troquelados con la forma de tu diseño. Ideales para termos, laptops, packaging o decoración.',
     '["/placeholder_stickers.png"]'::jsonb,
     FALSE,
-    30 -- 30 minutos de mano de obra
+    30
 );
 
--- Llavero de Resina
+-- 4. Llavero de Listón y Acrílico (Modificado)
 INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
 VALUES (
     (SELECT id FROM categories WHERE slug = 'llaveros-resina'),
-    'Llavero de Letra de Resina Floral',
-    'Llavero en forma de inicial hecho de resina epóxica transparente con incrustaciones de flores secas naturales, hoja de oro/plata y herraje de alta calidad.',
+    'Llavero de Listón y Acrílico Circular',
+    'Llavero hecho a mano con moño de listón de raso/organza, argolla metálica reforzada y placa de acrílico circular con vinilo personalizado.',
     '["/placeholder_llavero.png"]'::jsonb,
     FALSE,
-    60 -- 1 hora de mano de obra (tiempo activo de vertido/lijado/montaje)
+    25 -- 25 minutos de armado
 );
 
--- Relacionar Materiales con Productos
--- 1. Invitación Digital interactiva utiliza 1 licencia de hospedaje
+-- 5. Pastel Personalizado (Repostería)
+INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
+VALUES (
+    (SELECT id FROM categories WHERE slug = 'postres-personalizados'),
+    'Pastel Personalizado Temático',
+    'Pastel artístico personalizado para eventos. Configura sabor de pan, rellenos y cobertura en fondant o buttercream según la temática.',
+    '["/placeholder_pastel.png"]'::jsonb,
+    FALSE,
+    180 -- 3 horas de horneado y decoración
+);
+
+-- 6. Cupcakes Decorados
+INSERT INTO products (category_id, title, description, images, is_digital, estimated_minutes)
+VALUES (
+    (SELECT id FROM categories WHERE slug = 'postres-personalizados'),
+    'Set de Cupcakes Decorados (6 pzas)',
+    'Set de 6 cupcakes personalizados con buttercream y pequeños detalles de fondant temáticos.',
+    '["/placeholder_cupcakes.png"]'::jsonb,
+    FALSE,
+    90 -- 1 hora y media
+);
+
+
+-- Relacionar Insumos con Productos
+-- 1. Invitación
 INSERT INTO product_materials (product_id, material_id, quantity) VALUES
 ((SELECT id FROM products WHERE title = 'Invitación Digital Interactiva Premium'), (SELECT id FROM materials WHERE name = 'Hospedaje Digital Invitación (por año)'), 1.0000);
 
--- 2. Tote Bag utiliza 1 Bolsa lisa y 1 hoja de sublimación A4
+-- 2. Tote Bag
 INSERT INTO product_materials (product_id, material_id, quantity) VALUES
 ((SELECT id FROM products WHERE title = 'Tote Bag Canvas Personalizada'), (SELECT id FROM materials WHERE name = 'Bolsa Tote Bag Canvas Lisa'), 1.0000),
 ((SELECT id FROM products WHERE title = 'Tote Bag Canvas Personalizada'), (SELECT id FROM materials WHERE name = 'Hoja de Transfer / Sublimación A4'), 1.0000);
 
--- 3. Planilla de Stickers utiliza 1 Vinilo Adhesivo Holográfico A4 o Papel fotográfico autoadhesivo
+-- 3. Stickers
 INSERT INTO product_materials (product_id, material_id, quantity) VALUES
 ((SELECT id FROM products WHERE title = 'Planilla de Stickers Custom (A4)'), (SELECT id FROM materials WHERE name = 'Papel Fotográfico Autoadhesivo A4'), 1.0000);
 
--- 4. Llavero de resina utiliza 30g de resina, 1 herraje y 2g de decoración
+-- 4. Llavero de Listón y Acrílico (Usa 0.3m listón, 1 argolla, 1 acrílico, 1 vinilo)
 INSERT INTO product_materials (product_id, material_id, quantity) VALUES
-((SELECT id FROM products WHERE title = 'Llavero de Letra de Resina Floral'), (SELECT id FROM materials WHERE name = 'Resina Epóxica A+B'), 30.0000),
-((SELECT id FROM products WHERE title = 'Llavero de Letra de Resina Floral'), (SELECT id FROM materials WHERE name = 'Molde y Herraje de Llavero'), 1.0000),
-((SELECT id FROM products WHERE title = 'Llavero de Letra de Resina Floral'), (SELECT id FROM materials WHERE name = 'Glitter y Decoraciones'), 2.0000);
+((SELECT id FROM products WHERE title = 'Llavero de Listón y Acrílico Circular'), (SELECT id FROM materials WHERE name = 'Listón de Organza/Raso (m)'), 0.3000),
+((SELECT id FROM products WHERE title = 'Llavero de Listón y Acrílico Circular'), (SELECT id FROM materials WHERE name = 'Argolla y Cadena de Llavero'), 1.0000),
+((SELECT id FROM products WHERE title = 'Llavero de Listón y Acrílico Circular'), (SELECT id FROM materials WHERE name = 'Acrílico Circular 5cm'), 1.0000),
+((SELECT id FROM products WHERE title = 'Llavero de Listón y Acrílico Circular'), (SELECT id FROM materials WHERE name = 'Vinilo Autoadhesivo de Recorte (diseño)'), 1.0000);
+
+-- 5. Pastel Personalizado (Usa 1000g de mezcla base, 400g de coberturas y 1 caja)
+INSERT INTO product_materials (product_id, material_id, quantity) VALUES
+((SELECT id FROM products WHERE title = 'Pastel Personalizado Temático'), (SELECT id FROM materials WHERE name = 'Mezcla Base de Pastel (Harina/Huevo/Mantequilla) (g)'), 1000.0000),
+((SELECT id FROM products WHERE title = 'Pastel Personalizado Temático'), (SELECT id FROM materials WHERE name = 'Fondant y Coberturas (g)'), 400.0000),
+((SELECT id FROM products WHERE title = 'Pastel Personalizado Temático'), (SELECT id FROM materials WHERE name = 'Caja de Pastel y Soporte'), 1.0000);
+
+-- 6. Cupcakes (Usa 300g mezcla, 150g coberturas, 1 caja)
+INSERT INTO product_materials (product_id, material_id, quantity) VALUES
+((SELECT id FROM products WHERE title = 'Set de Cupcakes Decorados (6 pzas)'), (SELECT id FROM materials WHERE name = 'Mezcla Base de Pastel (Harina/Huevo/Mantequilla) (g)'), 300.0000),
+((SELECT id FROM products WHERE title = 'Set de Cupcakes Decorados (6 pzas)'), (SELECT id FROM materials WHERE name = 'Fondant y Coberturas (g)'), 150.0000),
+((SELECT id FROM products WHERE title = 'Set de Cupcakes Decorados (6 pzas)'), (SELECT id FROM materials WHERE name = 'Caja de Pastel y Soporte'), 1.0000);

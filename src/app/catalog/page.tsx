@@ -75,10 +75,27 @@ export default function Catalog() {
       case 'llaveros-resina':
         return (
           <div className="w-full h-48 bg-gradient-to-br from-logo-green/20 to-logo-cyan/20 rounded-t-2xl flex items-center justify-center relative overflow-hidden">
-            <div className="w-10 h-16 bg-white/40 backdrop-blur-sm border border-white/60 rounded-lg relative shadow flex items-center justify-center transform -rotate-6">
-              <div className="absolute -top-2 w-3 h-3 rounded-full border border-zinc-400 bg-zinc-200" />
-              <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-b from-logo-pink to-logo-orange">D</span>
+            {/* Moño de listón */}
+            <div className="absolute top-16 w-8 h-3 bg-logo-pink/80 rounded-full rotate-12 shadow-sm flex items-center justify-center text-[6px] text-white font-extrabold">🎀</div>
+            {/* Placa acrílica circular */}
+            <div className="w-12 h-12 bg-white/50 backdrop-blur-sm border-2 border-white rounded-full relative shadow flex items-center justify-center transform -rotate-12 mt-2">
+              <div className="absolute top-1.5 left-5.5 w-1.5 h-1.5 rounded-full bg-zinc-400" />
+              <span className="text-xs font-black text-forest/70">OD ⭐</span>
             </div>
+          </div>
+        );
+      case 'postres-personalizados':
+        return (
+          <div className="w-full h-48 bg-gradient-to-br from-logo-pink/20 to-logo-yellow/20 rounded-t-2xl flex items-center justify-center relative overflow-hidden">
+            <div className="flex flex-col items-center">
+              {/* Cereza */}
+              <div className="w-3.5 h-3.5 bg-logo-red rounded-full animate-bounce shadow-sm z-10" />
+              {/* Crema / Glaseado */}
+              <div className="w-8 h-5 bg-white rounded-full -mt-1 shadow-sm border border-forest/5" />
+              {/* Base Cupcake */}
+              <div className="w-10 h-8 bg-logo-orange/60 rounded-b-lg border-t border-forest/10 relative shadow-sm" style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%)' }} />
+            </div>
+            <span className="absolute top-4 right-4 text-xs animate-float">🧁</span>
           </div>
         );
       default:

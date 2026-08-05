@@ -2,41 +2,58 @@ import { supabase, isSupabaseConfigured } from './supabase';
 import { Category, Product, Material, QuoteSettings, Quote, QuoteStatus } from './types';
 
 // ==========================================
-// MOCK FALLBACK DATA
+// MOCK INITIAL SEED DATA
 // ==========================================
 
-const mockCategories: Category[] = [
+const initialCategories: Category[] = [
   { id: 'cat-1', name: 'Invitaciones Digitales', slug: 'invitaciones-digitales', description: 'Invitaciones interactivas para bodas, XV años, cumpleaños y eventos corporativos con RSVP, GPS y cuenta regresiva.' },
   { id: 'cat-2', name: 'Totebags Sublimadas', slug: 'tote-bags', description: 'Bolsas de tela canvas ecológicas y duraderas con diseños personalizados y sublimación premium.' },
   { id: 'cat-3', name: 'Stickers Personalizados', slug: 'stickers', description: 'Pegatinas de alta calidad con cortes precisos en diferentes acabados: brillante, mate y holográfico.' },
-  { id: 'cat-4', name: 'Llaveros de Resina', slug: 'llaveros-resina', description: 'Accesorios de resina epóxica hechos a mano, personalizados con flores secas, glitter y letras de colores.' }
+  { id: 'cat-4', name: 'Llaveros de Listón y Acrílico', slug: 'llaveros-resina', description: 'Llaveros elegantes elaborados con moño de listón de raso/organza, argolla metálica y placa acrílica circular decorada.' },
+  { id: 'cat-5', name: 'Postres Personalizados', slug: 'postres-personalizados', description: 'Pasteles de fondant o buttercream, cupcakes y repostería personalizada para eventos.' }
 ];
 
-const mockProducts: Product[] = [
-  { id: 'prod-1', category_id: 'cat-1', title: 'Invitación Digital Interactiva Premium', description: 'Invitación interactiva para dispositivos móviles. Incluye cuenta regresiva, confirmación automática de asistencia por WhatsApp, ubicación con Google Maps, enlaces a mesa de regalos y galería de fotos.', images: ['/placeholder_invitacion.png'], is_digital: true, estimated_minutes: 180 },
+const initialMaterials: Material[] = [
+  { id: 'mat-1', name: 'Listón de Organza/Raso (m)', unit_measure: 'm', unit_cost: 4.50, waste_percentage: 10.00 },
+  { id: 'mat-2', name: 'Argolla y Cadena de Llavero', unit_measure: 'pza', unit_cost: 3.50, waste_percentage: 2.00 },
+  { id: 'mat-3', name: 'Acrílico Circular 5cm', unit_measure: 'pza', unit_cost: 9.00, waste_percentage: 5.00 },
+  { id: 'mat-4', name: 'Vinilo Autoadhesivo de Recorte (diseño)', unit_measure: 'pza', unit_cost: 5.00, waste_percentage: 10.00 },
+  { id: 'mat-5', name: 'Bolsa Tote Bag Canvas Lisa', unit_measure: 'pza', unit_cost: 32.00, waste_percentage: 0.00 },
+  { id: 'mat-6', name: 'Hoja de Transfer / Sublimación A4', unit_measure: 'pza', unit_cost: 8.50, waste_percentage: 10.00 },
+  { id: 'mat-7', name: 'Vinilo Adhesivo Holográfico A4', unit_measure: 'pza', unit_cost: 18.00, waste_percentage: 15.00 },
+  { id: 'mat-8', name: 'Papel Fotográfico Autoadhesivo A4', unit_measure: 'pza', unit_cost: 6.00, waste_percentage: 8.00 },
+  { id: 'mat-9', name: 'Hospedaje Digital Invitación (por año)', unit_measure: 'pza', unit_cost: 50.00, waste_percentage: 0.00 },
+  { id: 'mat-10', name: 'Mezcla Base de Pastel (Harina/Huevo/Mantequilla) (g)', unit_measure: 'g', unit_cost: 0.08, waste_percentage: 5.00 },
+  { id: 'mat-11', name: 'Fondant y Coberturas (g)', unit_measure: 'g', unit_cost: 0.12, waste_percentage: 15.00 },
+  { id: 'mat-12', name: 'Caja de Pastel y Soporte', unit_measure: 'pza', unit_cost: 18.00, waste_percentage: 0.00 }
+];
+
+const initialProducts: Product[] = [
+  { id: 'prod-1', category_id: 'cat-1', title: 'Invitación Digital Interactiva Premium', description: 'Invitación interactiva para dispositivos móviles. Incluye cuenta regresiva, confirmación automática de asistencia por WhatsApp, ubicación con Google Maps, mesa de regalos y galería de fotos.', images: ['/placeholder_invitacion.png'], is_digital: true, estimated_minutes: 180 },
   { id: 'prod-2', category_id: 'cat-2', title: 'Tote Bag Canvas Personalizada', description: 'Bolsa de tela de algodón (canvas) resistente con impresión de alta calidad mediante técnica de sublimación. Medidas estándar 35x40cm.', images: ['/placeholder_totebag.png'], is_digital: false, estimated_minutes: 45 },
   { id: 'prod-3', category_id: 'cat-3', title: 'Planilla de Stickers Custom (A4)', description: 'Planilla tamaño A4 de stickers personalizados troquelados con la forma de tu diseño. Ideales para termos, laptops, packaging o decoración.', images: ['/placeholder_stickers.png'], is_digital: false, estimated_minutes: 30 },
-  { id: 'prod-4', category_id: 'cat-4', title: 'Llavero de Letra de Resina Floral', description: 'Llavero en forma de inicial hecho de resina epóxica transparente con incrustaciones de flores secas naturales, hoja de oro/plata y herraje de alta calidad.', images: ['/placeholder_llavero.png'], is_digital: false, estimated_minutes: 60 }
+  { id: 'prod-4', category_id: 'cat-4', title: 'Llavero de Listón y Acrílico Circular', description: 'Llavero hecho a mano con moño de listón de raso/organza, argolla metálica reforzada y placa de acrílico circular con vinilo personalizado.', images: ['/placeholder_llavero.png'], is_digital: false, estimated_minutes: 25 },
+  { id: 'prod-5', category_id: 'cat-5', title: 'Pastel Personalizado Temático', description: 'Pastel artístico personalizado para eventos. Configura sabor de pan, rellenos y cobertura en fondant o buttercream según la temática.', images: ['/placeholder_pastel.png'], is_digital: false, estimated_minutes: 180 },
+  { id: 'prod-6', category_id: 'cat-5', title: 'Set de Cupcakes Decorados (6 pzas)', description: 'Set de 6 cupcakes personalizados con buttercream y pequeños detalles de fondant temáticos.', images: ['/placeholder_cupcakes.png'], is_digital: false, estimated_minutes: 90 }
 ];
 
-const mockMaterials: Material[] = [
-  { id: 'mat-1', name: 'Resina Epóxica A+B', unit_measure: 'g', unit_cost: 0.45, waste_percentage: 5.00 },
-  { id: 'mat-2', name: 'Molde y Herraje de Llavero', unit_measure: 'pza', unit_cost: 15.00, waste_percentage: 2.00 },
-  { id: 'mat-3', name: 'Glitter y Decoraciones', unit_measure: 'g', unit_cost: 1.20, waste_percentage: 10.00 },
-  { id: 'mat-4', name: 'Bolsa Tote Bag Canvas Lisa', unit_measure: 'pza', unit_cost: 32.00, waste_percentage: 0.00 },
-  { id: 'mat-5', name: 'Hoja de Transfer / Sublimación A4', unit_measure: 'pza', unit_cost: 8.50, waste_percentage: 10.00 },
-  { id: 'mat-6', name: 'Vinilo Adhesivo Holográfico A4', unit_measure: 'pza', unit_cost: 18.00, waste_percentage: 15.00 },
-  { id: 'mat-7', name: 'Papel Fotográfico Autoadhesivo A4', unit_measure: 'pza', unit_cost: 6.00, waste_percentage: 8.00 },
-  { id: 'mat-8', name: 'Hospedaje Digital Invitación (por año)', unit_measure: 'pza', unit_cost: 50.00, waste_percentage: 0.00 }
+// Mapeos de insumos iniciales
+const initialProductMaterials = [
+  { productId: 'prod-1', materialId: 'mat-9', quantity: 1 },
+  { productId: 'prod-2', materialId: 'mat-5', quantity: 1 },
+  { productId: 'prod-2', materialId: 'mat-6', quantity: 1 },
+  { productId: 'prod-3', materialId: 'mat-8', quantity: 1 },
+  { productId: 'prod-4', materialId: 'mat-1', quantity: 0.3 },
+  { productId: 'prod-4', materialId: 'mat-2', quantity: 1 },
+  { productId: 'prod-4', materialId: 'mat-3', quantity: 1 },
+  { productId: 'prod-4', materialId: 'mat-4', quantity: 1 },
+  { productId: 'prod-5', materialId: 'mat-10', quantity: 1000 },
+  { productId: 'prod-5', materialId: 'mat-11', quantity: 400 },
+  { productId: 'prod-5', materialId: 'mat-12', quantity: 1 },
+  { productId: 'prod-6', materialId: 'mat-10', quantity: 300 },
+  { productId: 'prod-6', materialId: 'mat-11', quantity: 150 },
+  { productId: 'prod-6', materialId: 'mat-12', quantity: 1 }
 ];
-
-// Mapeo de insumos
-const mockProductMaterialsRecord: Record<string, { materialId: string; quantity: number }[]> = {
-  'prod-1': [{ materialId: 'mat-8', quantity: 1 }],
-  'prod-2': [{ materialId: 'mat-4', quantity: 1 }, { materialId: 'mat-5', quantity: 1 }],
-  'prod-3': [{ materialId: 'mat-7', quantity: 1 }],
-  'prod-4': [{ materialId: 'mat-1', quantity: 30 }, { materialId: 'mat-2', quantity: 1 }, { materialId: 'mat-3', quantity: 2 }]
-};
 
 const mockSettings: QuoteSettings = {
   hourly_rate: 120.00,
@@ -47,8 +64,58 @@ const mockSettings: QuoteSettings = {
   express_surcharge: 25.00,
   urgent_surcharge: 50.00,
   local_delivery_fee: 40.00,
-  national_shipping_fee: 180.00
+  national_shipping_fee: 80.00 // Actualizado a 80
 };
+
+// Keys para LocalStorage
+const PRODUCTS_KEY = 'obidobi_local_products';
+const MATERIALS_KEY = 'obidobi_local_materials';
+const PROD_MATERIALS_KEY = 'obidobi_local_product_materials';
+const QUOTES_KEY = 'obidobi_local_quotes';
+const SETTINGS_KEY = 'obidobi_local_settings';
+
+// ==========================================
+// HELPERS LOCALSTORAGE PERSISTENCE
+// ==========================================
+
+function getStorageItem<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  const stored = localStorage.getItem(key);
+  if (!stored) {
+    localStorage.setItem(key, JSON.stringify(defaultValue));
+    return defaultValue;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return defaultValue;
+  }
+}
+
+function setStorageItem<T>(key: string, value: T) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+}
+
+// Cargar listas iniciales
+function getLocalProducts(): Product[] {
+  return getStorageItem<Product[]>(PRODUCTS_KEY, initialProducts);
+}
+
+function getLocalMaterials(): Material[] {
+  return getStorageItem<Material[]>(MATERIALS_KEY, initialMaterials);
+}
+
+interface LocalProductMaterialRel {
+  productId: string;
+  materialId: string;
+  quantity: number;
+}
+
+function getLocalProductMaterialsRel(): LocalProductMaterialRel[] {
+  return getStorageItem<LocalProductMaterialRel[]>(PROD_MATERIALS_KEY, initialProductMaterials);
+}
 
 // ==========================================
 // DB SERVICE METHODS WITH LOCAL FALLBACK
@@ -60,7 +127,7 @@ export async function getCategories(): Promise<Category[]> {
     if (!error && data) return data as Category[];
     console.warn('Error fetching categories from Supabase, using mock:', error);
   }
-  return mockCategories;
+  return initialCategories;
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -69,7 +136,7 @@ export async function getProducts(): Promise<Product[]> {
     if (!error && data) return data as Product[];
     console.warn('Error fetching products from Supabase, using mock:', error);
   }
-  return mockProducts;
+  return getLocalProducts();
 }
 
 export async function getMaterials(): Promise<Material[]> {
@@ -78,7 +145,7 @@ export async function getMaterials(): Promise<Material[]> {
     if (!error && data) return data as Material[];
     console.warn('Error fetching materials from Supabase, using mock:', error);
   }
-  return mockMaterials;
+  return getLocalMaterials();
 }
 
 export async function getProductMaterials(productId: string): Promise<{ material: Material; quantityUsed: number }[]> {
@@ -98,9 +165,10 @@ export async function getProductMaterials(productId: string): Promise<{ material
   }
 
   // Fallback
-  const relations = mockProductMaterialsRecord[productId] || [];
+  const relations = getLocalProductMaterialsRel().filter(r => r.productId === productId);
+  const matsList = getLocalMaterials();
   return relations.map(rel => {
-    const mat = mockMaterials.find(m => m.id === rel.materialId)!;
+    const mat = matsList.find(m => m.id === rel.materialId)!;
     return { material: mat, quantityUsed: rel.quantity };
   });
 }
@@ -116,94 +184,152 @@ export async function getQuoteSettings(): Promise<QuoteSettings> {
     if (!error && data) return data as QuoteSettings;
     console.warn('Error fetching quote settings from Supabase, using mock:', error);
   }
-  return mockSettings;
+  return getStorageItem<QuoteSettings>(SETTINGS_KEY, mockSettings);
 }
 
-// Helpers para LocalStorage (Quotes)
-const LOCAL_QUOTES_KEY = 'obidobi_local_quotes';
+// ==========================================
+// ADMIN MUTATION METHODS
+// ==========================================
 
-function getLocalQuotes(): Quote[] {
-  if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(LOCAL_QUOTES_KEY);
-  if (!stored) {
-    // Si está vacío, sembramos algunas cotizaciones demo para la bandeja del admin
-    const initialQuotes: Quote[] = [
-      {
-        id: 'q-demo-1',
-        folio: 1001,
-        client_name: 'María Alejandra Hernández',
-        client_phone: '4171234567',
-        event_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 4 días en el futuro
-        delivery_type: 'local',
-        urgency_level: 'normal',
-        payment_method: 'transferencia',
-        total_amount: 320.00,
-        deposit_amount: 160.00,
-        status: 'pendiente',
-        included_revisions: 2,
-        extra_revisions_count: 0,
-        extra_revisions_cost: 0,
-        notes: 'Desea diseño de flores silvestres amarillas y lilas.',
-        created_at: new Date().toISOString(),
-        product_title: 'Llavero de Letra de Resina Floral',
-        quantity: 5
-      },
-      {
-        id: 'q-demo-2',
-        folio: 1002,
-        client_name: 'Juan Carlos Pérez',
-        client_phone: '4179876543',
-        event_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Mañana
-        delivery_type: 'taller',
-        urgency_level: 'urgente',
-        payment_method: 'efectivo',
-        total_amount: 650.00,
-        deposit_amount: 325.00,
-        status: 'anticipo_recibido',
-        included_revisions: 2,
-        extra_revisions_count: 1,
-        extra_revisions_cost: 50,
-        notes: 'ENTREGA URGENTE. Sublimado con logotipo de su empresa.',
-        created_at: new Date().toISOString(),
-        product_title: 'Tote Bag Canvas Personalizada',
-        quantity: 10
-      },
-      {
-        id: 'q-demo-3',
-        folio: 1003,
-        client_name: 'Debanhi Silva',
-        client_phone: '4171112233',
-        event_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        delivery_type: 'nacional',
-        urgency_level: 'normal',
-        payment_method: 'tarjeta',
-        total_amount: 1250.00,
-        deposit_amount: 625.00,
-        status: 'listo_entrega',
-        included_revisions: 2,
-        extra_revisions_count: 0,
-        extra_revisions_cost: 0,
-        notes: 'Invitación de bodas, requiere hospedaje premium.',
-        created_at: new Date().toISOString(),
-        product_title: 'Invitación Digital Interactiva Premium',
-        quantity: 1
+export async function createProduct(
+  product: Omit<Product, 'id'>, 
+  materials: { materialId: string; quantity: number }[]
+): Promise<Product> {
+  if (isSupabaseConfigured) {
+    const { data: newProd, error: prodErr } = await supabase
+      .from('products')
+      .insert([product])
+      .select()
+      .single();
+
+    if (!prodErr && newProd) {
+      if (materials.length > 0) {
+        const mappings = materials.map(m => ({
+          product_id: newProd.id,
+          material_id: m.materialId,
+          quantity: m.quantity
+        }));
+        await supabase.from('product_materials').insert(mappings);
       }
-    ];
-    localStorage.setItem(LOCAL_QUOTES_KEY, JSON.stringify(initialQuotes));
-    return initialQuotes;
+      return newProd as Product;
+    }
+    console.error('Error inserting product to Supabase:', prodErr);
   }
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return [];
-  }
+
+  // Fallback
+  const prods = getLocalProducts();
+  const newProduct: Product = {
+    ...product,
+    id: 'prod-' + Math.random().toString(36).substr(2, 9)
+  };
+  prods.push(newProduct);
+  setStorageItem(PRODUCTS_KEY, prods);
+
+  // Guardar relaciones
+  const rels = getLocalProductMaterialsRel();
+  materials.forEach(m => {
+    rels.push({
+      productId: newProduct.id,
+      materialId: m.materialId,
+      quantity: m.quantity
+    });
+  });
+  setStorageItem(PROD_MATERIALS_KEY, rels);
+
+  return newProduct;
 }
 
-function saveLocalQuotes(quotes: Quote[]) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(LOCAL_QUOTES_KEY, JSON.stringify(quotes));
+export async function deleteProduct(productId: string): Promise<boolean> {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from('products').delete().eq('id', productId);
+    if (!error) return true;
+    console.error('Error deleting product from Supabase:', error);
   }
+
+  // Fallback
+  const prods = getLocalProducts();
+  const updatedProds = prods.filter(p => p.id !== productId);
+  setStorageItem(PRODUCTS_KEY, updatedProds);
+
+  // Borrar relaciones
+  const rels = getLocalProductMaterialsRel();
+  const updatedRels = rels.filter(r => r.productId !== productId);
+  setStorageItem(PROD_MATERIALS_KEY, updatedRels);
+
+  return true;
 }
+
+export async function createMaterial(material: Omit<Material, 'id'>): Promise<Material> {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase
+      .from('materials')
+      .insert([material])
+      .select()
+      .single();
+    if (!error && data) return data as Material;
+    console.error('Error inserting material to Supabase:', error);
+  }
+
+  // Fallback
+  const mats = getLocalMaterials();
+  const newMat: Material = {
+    ...material,
+    id: 'mat-' + Math.random().toString(36).substr(2, 9)
+  };
+  mats.push(newMat);
+  setStorageItem(MATERIALS_KEY, mats);
+  return newMat;
+}
+
+export async function updateMaterial(material: Material): Promise<boolean> {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('materials')
+      .update({
+        name: material.name,
+        unit_measure: material.unit_measure,
+        unit_cost: material.unit_cost,
+        waste_percentage: material.waste_percentage
+      })
+      .eq('id', material.id);
+    if (!error) return true;
+    console.error('Error updating material in Supabase:', error);
+  }
+
+  // Fallback
+  const mats = getLocalMaterials();
+  const index = mats.findIndex(m => m.id === material.id);
+  if (index !== -1) {
+    mats[index] = material;
+    setStorageItem(MATERIALS_KEY, mats);
+    return true;
+  }
+  return false;
+}
+
+export async function deleteMaterial(materialId: string): Promise<boolean> {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.from('materials').delete().eq('id', materialId);
+    if (!error) return true;
+    console.error('Error deleting material from Supabase:', error);
+  }
+
+  // Fallback
+  const mats = getLocalMaterials();
+  const updatedMats = mats.filter(m => m.id !== materialId);
+  setStorageItem(MATERIALS_KEY, updatedMats);
+
+  // Borrar relaciones asociadas
+  const rels = getLocalProductMaterialsRel();
+  const updatedRels = rels.filter(r => r.materialId !== materialId);
+  setStorageItem(PROD_MATERIALS_KEY, updatedRels);
+
+  return true;
+}
+
+// ==========================================
+// QUOTES LOCALSTORAGE & SUPABASE METHODS
+// ==========================================
 
 export async function createQuote(quote: Omit<Quote, 'id' | 'folio' | 'created_at'>): Promise<Quote> {
   if (isSupabaseConfigured) {
@@ -217,8 +343,8 @@ export async function createQuote(quote: Omit<Quote, 'id' | 'folio' | 'created_a
     console.error('Error inserting quote to Supabase:', error);
   }
 
-  // Fallback a localStorage
-  const quotes = getLocalQuotes();
+  // Fallback
+  const quotes = getStorageItem<Quote[]>(QUOTES_KEY, []);
   const nextFolio = quotes.length > 0 ? Math.max(...quotes.map(q => q.folio || 1000)) + 1 : 1001;
   const newQuote: Quote = {
     ...quote,
@@ -227,7 +353,7 @@ export async function createQuote(quote: Omit<Quote, 'id' | 'folio' | 'created_a
     created_at: new Date().toISOString()
   };
   quotes.push(newQuote);
-  saveLocalQuotes(quotes);
+  setStorageItem(QUOTES_KEY, quotes);
   return newQuote;
 }
 
@@ -241,7 +367,50 @@ export async function getQuotes(): Promise<Quote[]> {
     if (!error && data) return data as Quote[];
     console.warn('Error fetching quotes from Supabase, using mock:', error);
   }
-  return getLocalQuotes();
+  // Sembramos algunas cotizaciones demo iniciales si no existen
+  const demoQuotes: Quote[] = [
+    {
+      id: 'q-demo-1',
+      folio: 1001,
+      client_name: 'María Alejandra Hernández',
+      client_phone: '4171234567',
+      event_date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      delivery_type: 'local',
+      urgency_level: 'normal',
+      payment_method: 'transferencia',
+      total_amount: 320.00,
+      deposit_amount: 160.00,
+      status: 'pendiente',
+      included_revisions: 2,
+      extra_revisions_count: 0,
+      extra_revisions_cost: 0,
+      notes: 'Desea diseño de listón rosa pastel en el llavero.',
+      created_at: new Date().toISOString(),
+      product_title: 'Llavero de Listón y Acrílico Circular',
+      quantity: 5
+    },
+    {
+      id: 'q-demo-2',
+      folio: 1002,
+      client_name: 'Juan Carlos Pérez',
+      client_phone: '7891117199',
+      event_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      delivery_type: 'taller',
+      urgency_level: 'urgente',
+      payment_method: 'efectivo',
+      total_amount: 650.00,
+      deposit_amount: 325.00,
+      status: 'anticipo_recibido',
+      included_revisions: 2,
+      extra_revisions_count: 1,
+      extra_revisions_cost: 50,
+      notes: 'ENTREGA URGENTE. Sublimado con logotipo de su empresa.',
+      created_at: new Date().toISOString(),
+      product_title: 'Tote Bag Canvas Personalizada',
+      quantity: 10
+    }
+  ];
+  return getStorageItem<Quote[]>(QUOTES_KEY, demoQuotes);
 }
 
 export async function updateQuoteStatus(quoteId: string, status: QuoteStatus): Promise<boolean> {
@@ -255,11 +424,11 @@ export async function updateQuoteStatus(quoteId: string, status: QuoteStatus): P
   }
 
   // Fallback
-  const quotes = getLocalQuotes();
+  const quotes = getStorageItem<Quote[]>(QUOTES_KEY, []);
   const index = quotes.findIndex(q => q.id === quoteId);
   if (index !== -1) {
     quotes[index].status = status;
-    saveLocalQuotes(quotes);
+    setStorageItem(QUOTES_KEY, quotes);
     return true;
   }
   return false;
@@ -287,14 +456,14 @@ export async function updateQuoteRevisions(
   }
 
   // Fallback
-  const quotes = getLocalQuotes();
+  const quotes = getStorageItem<Quote[]>(QUOTES_KEY, []);
   const index = quotes.findIndex(q => q.id === quoteId);
   if (index !== -1) {
     quotes[index].extra_revisions_count = extraRevisionsCount;
     quotes[index].extra_revisions_cost = extraRevisionsCost;
     quotes[index].total_amount = totalAmount;
     quotes[index].deposit_amount = depositAmount;
-    saveLocalQuotes(quotes);
+    setStorageItem(QUOTES_KEY, quotes);
     return true;
   }
   return false;
@@ -311,12 +480,12 @@ export async function uploadReceiptUrl(quoteId: string, paymentReceiptUrl: strin
   }
 
   // Fallback
-  const quotes = getLocalQuotes();
+  const quotes = getStorageItem<Quote[]>(QUOTES_KEY, []);
   const index = quotes.findIndex(q => q.id === quoteId);
   if (index !== -1) {
     quotes[index].payment_receipt_url = paymentReceiptUrl;
     quotes[index].status = 'anticipo_recibido';
-    saveLocalQuotes(quotes);
+    setStorageItem(QUOTES_KEY, quotes);
     return true;
   }
   return false;
