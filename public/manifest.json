@@ -1,0 +1,18 @@
+{
+  "name": "Obi Dobi — Papelería Creativa",
+  "short_name": "Obi Dobi",
+  "description": "PWA y Cotizador Inteligente para Obi Dobi, papelería creativa local en Acámbaro, Gto.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFDF9",
+  "theme_color": "#1E352F",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

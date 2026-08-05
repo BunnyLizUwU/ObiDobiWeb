@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cream: #FFFDF9;
+  --color-forest: #1E352F;
+  --color-primary-blue: #4CA5DF;
+  --color-logo-yellow: #FDE24F;
+  --color-logo-red: #F74A4A;
+  --color-logo-pink: #FF1A75;
+  --color-logo-green: #7AD93F;
+  --color-logo-orange: #FF9214;
+  --color-logo-cyan: #3FE0D0;
+  
+  --font-sans: var(--font-fredoka), sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FFFDF9;
+  --foreground: #1E352F;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-forest);
+  font-family: var(--font-sans);
+}
+
+/* Animaciones personalizadas */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.logo-bubble {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.logo-bubble:hover {
+  transform: scale(1.15) rotate(2deg);
 }
