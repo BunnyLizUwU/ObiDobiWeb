@@ -373,6 +373,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCopyCalendarLink = () => {
+    const feedUrl = `${window.location.origin}/api/calendar`;
+    navigator.clipboard.writeText(feedUrl);
+    alert(
+      '¡Enlace de sincronización copiado al portapapeles!\n\n' +
+      'Para agregarlo a Google Calendar:\n' +
+      '1. Abre Google Calendar en tu computadora (calendar.google.com).\n' +
+      '2. En el menú de la izquierda, junto a "Otros calendarios", haz clic en el botón "+" y selecciona "Desde URL".\n' +
+      '3. Pega el enlace copiado (Ctrl+V) y haz clic en "Añadir calendario".\n\n' +
+      'Tus entregas de Obi Dobi se actualizarán automáticamente en tu celular y computadora.'
+    );
+  };
+
   // Generador de plantillas de WhatsApp
   const generateWhatsAppLink = (templateType: 'cotizacion' | 'boceto' | 'listo') => {
     if (!selectedQuote) return '';
@@ -802,10 +815,19 @@ export default function AdminDashboard() {
         {selectedTab === 'calendar' && (
           <div className="flex-1 bg-cream p-6 overflow-y-auto">
             <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-forest/5 p-6 md:p-8 shadow-sm">
-              <h2 className="text-xl font-extrabold text-forest mb-6 flex items-center gap-2">
-                <CalIcon className="w-6 h-6 text-logo-orange" />
-                Cronograma de Entregas Prioritarias
-              </h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-forest/5 pb-4">
+                <h2 className="text-xl font-extrabold text-forest flex items-center gap-2">
+                  <CalIcon className="w-6 h-6 text-logo-orange" />
+                  Cronograma de Entregas Prioritarias
+                </h2>
+                <button
+                  onClick={handleCopyCalendarLink}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-forest hover:bg-forest/90 text-cream text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4 text-logo-yellow" />
+                  Sincronizar con Google Calendar
+                </button>
+              </div>
 
               <div className="flex flex-col gap-4">
                 {getCalendarQuotes().length === 0 ? (
