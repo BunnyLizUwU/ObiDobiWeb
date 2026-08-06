@@ -189,6 +189,12 @@ function QuoteCalculatorContent() {
       } else if (isSticker) {
         customSpecs.push(`Tamaño: ${stickerWidth}x${stickerHeight} cm`);
         customSpecs.push(`Acabado: ${stickerFinish}`);
+        if (breakdown.sheetsNeeded) {
+          customSpecs.push(`Hojas A4: ${breakdown.sheetsNeeded}`);
+        }
+        if (breakdown.pricePerPiece) {
+          customSpecs.push(`Precio unitario: $${breakdown.pricePerPiece.toFixed(2)} c/u`);
+        }
       } else if (isKeychain) {
         customSpecs.push(`Listón: ${ribbonColor}`);
         customSpecs.push(`Placa extra: ${extraAcrylic ? 'Sí' : 'No'}`);
@@ -743,6 +749,27 @@ function QuoteCalculatorContent() {
                 <div className="flex justify-between text-cream font-semibold">
                   <span>Gastos de Envío ({deliveryType}):</span>
                   <span>+${breakdown.deliveryFee.toFixed(2)} MXN</span>
+                </div>
+              )}
+
+              {breakdown.sheetsNeeded !== undefined && breakdown.sheetsNeeded > 0 && (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 text-cream my-1 text-[11px]">
+                  <div className="flex justify-between font-semibold">
+                    <span>Hojas A4 requeridas:</span>
+                    <span className="font-bold text-logo-yellow">{breakdown.sheetsNeeded} {breakdown.sheetsNeeded === 1 ? 'planilla' : 'planillas'}</span>
+                  </div>
+                  {breakdown.stickersPerPage !== undefined && (
+                    <div className="flex justify-between text-cream/60">
+                      <span>Stickers por planilla:</span>
+                      <span>{breakdown.stickersPerPage} pzas</span>
+                    </div>
+                  )}
+                  {breakdown.pricePerPiece !== undefined && (
+                    <div className="flex justify-between text-cream/60 border-t border-white/5 pt-1.5 mt-0.5">
+                      <span>Precio unitario por sticker:</span>
+                      <span className="font-bold text-logo-pink">${breakdown.pricePerPiece.toFixed(2)} MXN c/u</span>
+                    </div>
+                  )}
                 </div>
               )}
 

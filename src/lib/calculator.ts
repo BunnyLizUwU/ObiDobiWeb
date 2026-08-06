@@ -40,6 +40,10 @@ export interface QuoteBreakdown {
   total: number;
   depositRequired: number;
   balanceDue: number;
+  // Stickers extra details
+  stickersPerPage?: number;
+  sheetsNeeded?: number;
+  pricePerPiece?: number;
 }
 
 export function calculateQuote(input: CalculateQuoteInput): QuoteBreakdown {
@@ -64,6 +68,10 @@ export function calculateQuote(input: CalculateQuoteInput): QuoteBreakdown {
 
   let materialsCost = 0;
   let estimatedMinutes = product.estimated_minutes;
+
+  // Trackers para stickers
+  let stickersPerPageVal: number | undefined;
+  let sheetsNeededVal: number | undefined;
 
   // ==========================================
   // 1. CÁLCULO DE MATERIALES Y TIEMPO ESPECÍFICOS
@@ -97,8 +105,11 @@ export function calculateQuote(input: CalculateQuoteInput): QuoteBreakdown {
     const paperCostWithWaste = paperUnitCost * (1 + wastePct / 100);
     materialsCost = sheetsNeeded * paperCostWithWaste;
     
-    // Mano de obra de corte: 30 minutos base por planilla + 1 minuto por sticker
+    // Mano de obra de corte: 20 minutos base por planilla + 0.5 minutos por sticker
     estimatedMinutes = (20 * sheetsNeeded) + (0.5 * quantity);
+
+    stickersPerPageVal = stickersPerPage;
+    sheetsNeededVal = sheetsNeeded;
 
   } else if (isKeychain) {
     // --- LLAVEROS DE LISTÓN Y ACRÍLICO ---
@@ -196,8 +207,9 @@ export function calculateQuote(input: CalculateQuoteInput): QuoteBreakdown {
   // ==========================================
   
   // Costo de Mano de Obra ($C_mo)
-  const laborCostPerUnit = (estimatedMinutes * settings.hourly_rate) / 60;
-  const laborCost = laborCostPerUnit * quantity;
+  const laborCost = isSticker 
+    ? (estimatedMinutes * settings.hourly_rate) / 60
+    : ((estimatedMinutes * settings.hourly_rate) / 60) * quantity;
 
   // Gastos Indirectos ($C_ind)
   const indirectCost = (materialsCost + laborCost) * (settings.indirect_cost_percentage / 100);
@@ -274,7 +286,10 @@ export function calculateQuote(input: CalculateQuoteInput): QuoteBreakdown {
     deliveryFee: Math.round(deliveryFee * 100) / 100,
     total: Math.round(total * 100) / 100,
     depositRequired: Math.round(depositRequired * 100) / 100,
-    balanceDue: Math.round(balanceDue * 100) / 100
+    balanceDue: Math.round(balanceDue * 100) / 100,
+    stickersPerPage: stickersPerPageVal,
+    sheetsNeeded: sheetsNeededVal,
+    pricePerPiece: quantity > 0 ? Math.round((total / quantity) * 100) / 100 : Math.round(total * 100) / 100
   };
 }
 
