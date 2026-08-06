@@ -36,16 +36,17 @@ export default function AdminLogin() {
         router.push('/admin');
       }
     } else {
-      // Mock Auth Fallback para demostración local
+      // Mock Auth Fallback para demostración local (solo habilitado en desarrollo)
       setTimeout(() => {
+        const isDev = process.env.NODE_ENV === 'development';
         if (
-          (email === 'admin@obidobi.com' || email === 'debanhi@obidobi.com' || email === 'admin') &&
-          (password === 'admin123' || password === 'debanhi' || password === '')
+          isDev &&
+          (email === 'debanhi@obidobi.com' && password === 'debanhi')
         ) {
           sessionStorage.setItem('obidobi_admin_logged', 'true');
           router.push('/admin');
         } else {
-          setErrorMsg('Credenciales inválidas. En modo offline usa: debanhi@obidobi.com y clave: debanhi');
+          setErrorMsg('No se pudo establecer conexión con el servidor de autenticación. Verifica tu conexión de red o contacta al administrador.');
         }
         setLoading(false);
       }, 800);
@@ -67,17 +68,7 @@ export default function AdminLogin() {
           </div>
         </div>
 
-        {isOffline && (
-          <div className="bg-logo-yellow/10 border border-logo-yellow/30 rounded-2xl p-4 flex gap-3 text-left">
-            <AlertCircle className="w-5 h-5 text-logo-orange shrink-0 mt-0.5" />
-            <div className="text-xs text-forest/75 leading-relaxed">
-              <span className="font-bold block text-logo-orange">Modo Demostración Activado</span>
-              No hay credenciales reales de Supabase. Ingresa con:
-              <br />
-              <span className="font-mono bg-white/70 px-1 py-0.5 rounded">debanhi@obidobi.com</span> y clave <span className="font-mono bg-white/70 px-1 py-0.5 rounded">debanhi</span>.
-            </div>
-          </div>
-        )}
+        {/* Banner de demostración eliminado por seguridad */}
 
         {errorMsg && (
           <div className="bg-logo-red/10 border border-logo-red/20 text-logo-red rounded-xl p-3.5 text-xs text-center font-medium">

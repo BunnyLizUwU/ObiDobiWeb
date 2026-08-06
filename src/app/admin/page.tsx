@@ -10,7 +10,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { 
   getQuotes, updateQuoteStatus, updateQuoteRevisions, uploadReceiptUrl, getQuoteSettings,
-  getCategories, getProducts, getMaterials, getProductMaterials, createProduct, deleteProduct,
+  getCategories, getProducts, getMaterials, getProductMaterials, createProduct, updateProduct, deleteProduct,
   createMaterial, updateMaterial, deleteMaterial
 } from '../../lib/db';
 import { Quote, QuoteStatus, QuoteSettings, Product, Material, Category } from '../../lib/types';
@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   const [prodMinutes, setProdMinutes] = useState(0);
   const [prodIsDigital, setProdIsDigital] = useState(false);
   const [prodSelectedMaterials, setProdSelectedMaterials] = useState<Record<string, number>>({});
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   
   // Filters & Search
@@ -286,28 +287,78 @@ export default function AdminDashboard() {
         quantity: qty
       }));
 
-    const data: Omit<Product, 'id'> = {
-      title: prodTitle,
-      description: prodDesc,
-      category_id: prodCategory || categories[0]?.id || '',
-      estimated_minutes: prodMinutes,
-      is_digital: prodIsDigital,
-      images: ['/placeholder_producto.png']
-    };
+    if (editingProduct) {
+      const updated: Product = {
+        ...editingProduct,
+        title: prodTitle,
+        description: prodDesc,
+        category_id: prodCategory || categories[0]?.id || '',
+        estimated_minutes: prodMinutes,
+        is_digital: prodIsDigital,
+        images: editingProduct.images || ['/placeholder_producto.png']
+      };
+      const ok = await updateProduct(updated, materialsMapping);
+      if (ok) {
+        setProductsList(prev => prev.map(p => p.id === editingProduct.id ? updated : p));
+        setShowProductForm(false);
+        setEditingProduct(null);
+        
+        // Limpiar formulario
+        setProdTitle('');
+        setProdDesc('');
+        setProdCategory(categories[0]?.id || '');
+        setProdMinutes(0);
+        setProdIsDigital(false);
+        setProdSelectedMaterials({});
+      }
+    } else {
+      const data: Omit<Product, 'id'> = {
+        title: prodTitle,
+        description: prodDesc,
+        category_id: prodCategory || categories[0]?.id || '',
+        estimated_minutes: prodMinutes,
+        is_digital: prodIsDigital,
+        images: ['/placeholder_producto.png']
+      };
 
-    const created = await createProduct(data, materialsMapping);
-    if (created) {
-      setProductsList(prev => [...prev, created]);
-      setShowProductForm(false);
-      
-      // Limpiar formulario
-      setProdTitle('');
-      setProdDesc('');
-      setProdCategory(categories[0]?.id || '');
-      setProdMinutes(0);
-      setProdIsDigital(false);
+      const created = await createProduct(data, materialsMapping);
+      if (created) {
+        setProductsList(prev => [...prev, created]);
+        setShowProductForm(false);
+        
+        // Limpiar formulario
+        setProdTitle('');
+        setProdDesc('');
+        setProdCategory(categories[0]?.id || '');
+        setProdMinutes(0);
+        setProdIsDigital(false);
+        setProdSelectedMaterials({});
+      }
+    }
+  };
+
+  const handleEditProductClick = async (product: Product) => {
+    setEditingProduct(product);
+    setProdTitle(product.title);
+    setProdDesc(product.description || '');
+    setProdCategory(product.category_id || '');
+    setProdMinutes(product.estimated_minutes || 0);
+    setProdIsDigital(product.is_digital || false);
+    
+    // Cargar materiales del producto
+    try {
+      const pmats = await getProductMaterials(product.id);
+      const materialsMap: Record<string, number> = {};
+      pmats.forEach(item => {
+        materialsMap[item.material.id] = item.quantityUsed;
+      });
+      setProdSelectedMaterials(materialsMap);
+    } catch (err) {
+      console.error('Error fetching product materials for edit:', err);
       setProdSelectedMaterials({});
     }
+    
+    setShowProductForm(true);
   };
 
   const handleDeleteProductClick = async (id: string) => {
@@ -896,6 +947,7 @@ export default function AdminDashboard() {
                         <h3 className="text-sm font-black text-forest uppercase tracking-wider">Productos del Catálogo</h3>
                         <button
                           onClick={() => {
+                            setEditingProduct(null);
                             setProdTitle('');
                             setProdDesc('');
                             setProdCategory(categories[0]?.id || '');
@@ -940,10 +992,16 @@ export default function AdminDashboard() {
                                       {p.is_digital ? 'Digital' : 'Físico'}
                                     </span>
                                   </td>
-                                  <td className="py-4 px-4 text-right">
+                                  <td className="py-4 px-4 text-right flex justify-end gap-2">
+                                    <button
+                                      onClick={() => handleEditProductClick(p)}
+                                      className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-forest bg-logo-yellow/20 hover:bg-logo-yellow rounded-lg transition-all"
+                                    >
+                                      Editar
+                                    </button>
                                     <button
                                       onClick={() => handleDeleteProductClick(p.id)}
-                                      className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-logo-red bg-logo-red/10 hover:bg-logo-red hover:text-white rounded-lg transition-all"
+                                      className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-logo-red bg-logo-red/10 hover:bg-logo-red hover:text-white rounded-lg transition-all"
                                     >
                                       Eliminar
                                     </button>
@@ -958,7 +1016,9 @@ export default function AdminDashboard() {
                   ) : (
                     // FORMULARIO CREAR PRODUCTO
                     <form onSubmit={handleSaveProduct} className="flex flex-col gap-6 max-w-2xl mx-auto">
-                      <h3 className="text-base font-black text-forest border-b border-forest/10 pb-2">Agregar Nuevo Producto al Catálogo</h3>
+                      <h3 className="text-base font-black text-forest border-b border-forest/10 pb-2">
+                        {editingProduct ? `Editar Producto: ${editingProduct.title}` : 'Agregar Nuevo Producto al Catálogo'}
+                      </h3>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -1049,7 +1109,10 @@ export default function AdminDashboard() {
                       <div className="flex justify-end gap-3 border-t border-forest/10 pt-4 mt-2">
                         <button
                           type="button"
-                          onClick={() => setShowProductForm(false)}
+                          onClick={() => {
+                            setShowProductForm(false);
+                            setEditingProduct(null);
+                          }}
                           className="px-5 py-2.5 border border-forest/10 hover:bg-forest/5 text-forest text-xs font-black uppercase rounded-xl transition-all"
                         >
                           Cancelar
@@ -1058,7 +1121,7 @@ export default function AdminDashboard() {
                           type="submit"
                           className="px-5 py-2.5 bg-forest text-cream text-xs font-black uppercase rounded-xl hover:bg-forest/90 transition-all shadow-md"
                         >
-                          Guardar Producto
+                          {editingProduct ? 'Guardar Cambios' : 'Guardar Producto'}
                         </button>
                       </div>
                     </form>

@@ -239,6 +239,65 @@ export async function createProduct(
   return newProduct;
 }
 
+export async function updateProduct(
+  product: Product, 
+  materials: { materialId: string; quantity: number }[]
+): Promise<boolean> {
+  if (isSupabaseConfigured) {
+    const { error: prodErr } = await supabase
+      .from('products')
+      .update({
+        title: product.title,
+        description: product.description,
+        category_id: product.category_id,
+        estimated_minutes: product.estimated_minutes,
+        is_digital: product.is_digital,
+        images: product.images
+      })
+      .eq('id', product.id);
+
+    if (!prodErr) {
+      // Borrar relaciones anteriores
+      await supabase.from('product_materials').delete().eq('product_id', product.id);
+      
+      // Insertar nuevas relaciones
+      if (materials.length > 0) {
+        const mappings = materials.map(m => ({
+          product_id: product.id,
+          material_id: m.materialId,
+          quantity: m.quantity
+        }));
+        await supabase.from('product_materials').insert(mappings);
+      }
+      return true;
+    }
+    console.error('Error updating product in Supabase:', prodErr);
+    return false;
+  }
+
+  // Fallback
+  const prods = getLocalProducts();
+  const index = prods.findIndex(p => p.id === product.id);
+  if (index !== -1) {
+    prods[index] = product;
+    setStorageItem(PRODUCTS_KEY, prods);
+
+    // Actualizar relaciones en LocalStorage
+    const rels = getLocalProductMaterialsRel();
+    const updatedRels = rels.filter(r => r.productId !== product.id);
+    materials.forEach(m => {
+      updatedRels.push({
+        productId: product.id,
+        materialId: m.materialId,
+        quantity: m.quantity
+      });
+    });
+    setStorageItem(PROD_MATERIALS_KEY, updatedRels);
+    return true;
+  }
+  return false;
+}
+
 export async function deleteProduct(productId: string): Promise<boolean> {
   if (isSupabaseConfigured) {
     const { error } = await supabase.from('products').delete().eq('id', productId);
