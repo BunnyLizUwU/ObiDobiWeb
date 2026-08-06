@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [prodIsDigital, setProdIsDigital] = useState(false);
   const [prodSelectedMaterials, setProdSelectedMaterials] = useState<Record<string, number>>({});
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [prodImageUrl, setProdImageUrl] = useState('');
 
   
   // Filters & Search
@@ -295,7 +296,7 @@ export default function AdminDashboard() {
         category_id: prodCategory || categories[0]?.id || '',
         estimated_minutes: prodMinutes,
         is_digital: prodIsDigital,
-        images: editingProduct.images || ['/placeholder_producto.png']
+        images: prodImageUrl ? [prodImageUrl] : ['/placeholder_producto.png']
       };
       const ok = await updateProduct(updated, materialsMapping);
       if (ok) {
@@ -310,6 +311,7 @@ export default function AdminDashboard() {
         setProdMinutes(0);
         setProdIsDigital(false);
         setProdSelectedMaterials({});
+        setProdImageUrl('');
       }
     } else {
       const data: Omit<Product, 'id'> = {
@@ -318,7 +320,7 @@ export default function AdminDashboard() {
         category_id: prodCategory || categories[0]?.id || '',
         estimated_minutes: prodMinutes,
         is_digital: prodIsDigital,
-        images: ['/placeholder_producto.png']
+        images: prodImageUrl ? [prodImageUrl] : ['/placeholder_producto.png']
       };
 
       const created = await createProduct(data, materialsMapping);
@@ -333,6 +335,7 @@ export default function AdminDashboard() {
         setProdMinutes(0);
         setProdIsDigital(false);
         setProdSelectedMaterials({});
+        setProdImageUrl('');
       }
     }
   };
@@ -344,6 +347,7 @@ export default function AdminDashboard() {
     setProdCategory(product.category_id || '');
     setProdMinutes(product.estimated_minutes || 0);
     setProdIsDigital(product.is_digital || false);
+    setProdImageUrl(product.images && product.images[0] && !product.images[0].startsWith('/placeholder') ? product.images[0] : '');
     
     // Cargar materiales del producto
     try {
@@ -954,6 +958,7 @@ export default function AdminDashboard() {
                             setProdMinutes(30);
                             setProdIsDigital(false);
                             setProdSelectedMaterials({});
+                            setProdImageUrl('');
                             setShowProductForm(true);
                           }}
                           className="flex items-center gap-1 px-4 py-2 bg-logo-pink text-white text-xs font-black uppercase tracking-wider rounded-xl hover:bg-logo-pink/90 transition-all shadow-sm"
@@ -1038,6 +1043,11 @@ export default function AdminDashboard() {
                       <div>
                         <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">Descripción</label>
                         <textarea required placeholder="Escribe para qué sirve y qué incluye..." value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-forest/15 text-sm font-medium focus:outline-none focus:border-logo-pink h-20" />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">URL de la Imagen del Producto (Opcional)</label>
+                        <input type="url" placeholder="ej. https://tudominio.com/fotos/producto1.jpg" value={prodImageUrl} onChange={(e) => setProdImageUrl(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

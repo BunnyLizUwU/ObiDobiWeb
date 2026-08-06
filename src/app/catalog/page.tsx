@@ -191,8 +191,16 @@ export default function Catalog() {
                         className="bg-white rounded-2xl border border-forest/5 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all flex flex-col overflow-hidden group"
                       >
                         {/* Product Illustration / Image */}
-                        <div>
-                          {getProductIllustration(catSlug)}
+                        <div className="w-full h-48 bg-cream flex items-center justify-center relative overflow-hidden">
+                          {product.images && product.images.length > 0 && product.images[0] && !product.images[0].startsWith('/placeholder') ? (
+                            <img 
+                              src={product.images[0]} 
+                              alt={product.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            getProductIllustration(catSlug)
+                          )}
                         </div>
 
                         {/* Product Body */}
