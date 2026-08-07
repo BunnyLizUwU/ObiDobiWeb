@@ -27,9 +27,10 @@ export default function Home() {
       const prods = await getProducts();
       setProducts(prods);
 
-      // Verificar si hay sesión de admin
+      // Verificar si hay sesión de admin (tanto en Supabase como en sessionStorage)
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      const localLogged = sessionStorage.getItem('obidobi_admin_logged') === 'true';
+      if (user || localLogged) {
         setIsAdmin(true);
       }
     }
