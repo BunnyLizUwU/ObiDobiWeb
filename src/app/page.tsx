@@ -6,7 +6,7 @@ import { ArrowRight, Sparkles, Calculator, BookOpen, Clock, Heart, Award, Pencil
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LogoBubbles from '../components/LogoBubbles';
-import { getProducts, getProductMaterials, updateProduct } from '../lib/db';
+import { getProducts, getProductMaterials, updateProduct, uploadProductImage } from '../lib/db';
 import { supabase } from '../lib/supabase';
 import { Product } from '../lib/types';
 
@@ -20,6 +20,7 @@ export default function Home() {
   const [editDesc, setEditDesc] = useState('');
   const [editImage, setEditImage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -42,6 +43,26 @@ export default function Home() {
     setEditTitle(prod.title);
     setEditDesc(prod.description);
     setEditImage(prod.images?.[0] || '');
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const publicUrl = await uploadProductImage(file);
+      if (publicUrl) {
+        setEditImage(publicUrl);
+      } else {
+        alert('No se pudo subir la imagen. Verifica que el bucket "products" esté configurado en tu Supabase.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al subir el archivo.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -456,30 +477,49 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-forest/65 uppercase mb-1.5">URL de la Foto</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input
-                      type="url"
-                      placeholder="https://ejemplo.com/foto.jpg"
-                      value={editImage}
-                      onChange={(e) => setEditImage(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-forest/10"
-                    />
-                    <ImageIcon className="w-4 h-4 text-forest/30 absolute left-3 top-2.5" />
-                  </div>
-                  {editImage.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => setEditImage('')}
-                      className="px-3 py-2 text-xs font-bold text-logo-red border border-logo-red/20 rounded-xl hover:bg-logo-red/5 transition-colors cursor-pointer"
-                    >
-                      Limpiar
-                    </button>
-                  )}
+                <label className="block text-xs font-bold text-forest/65 uppercase mb-1.5">Foto del Producto</label>
+                
+                {/* Selector de Archivo Local */}
+                <div className="mb-3">
+                  <label className="block text-[10px] font-bold text-forest/40 uppercase mb-1">Subir desde tu dispositivo</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImage}
+                    onChange={handleImageFileChange}
+                    className="w-full text-xs text-forest/70 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-logo-pink/10 file:text-logo-pink hover:file:bg-logo-pink/20 cursor-pointer"
+                  />
+                  {uploadingImage && <span className="text-[10px] text-logo-pink font-semibold mt-1 block animate-pulse">Subiendo foto...</span>}
                 </div>
-                <p className="text-[10px] text-forest/40 mt-1">
-                  Deja este campo vacío para volver a mostrar la ilustración animada por defecto.
+
+                {/* Alternativa URL */}
+                <div>
+                  <label className="block text-[10px] font-bold text-forest/40 uppercase mb-1">O pegar enlace (URL)</label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="url"
+                        placeholder="https://ejemplo.com/foto.jpg"
+                        value={editImage}
+                        onChange={(e) => setEditImage(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-forest/15 bg-white text-forest text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-forest/10"
+                      />
+                      <ImageIcon className="w-4 h-4 text-forest/30 absolute left-3 top-2.5" />
+                    </div>
+                    {editImage.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setEditImage('')}
+                        className="px-3 py-2 text-xs font-bold text-logo-red border border-logo-red/20 rounded-xl hover:bg-logo-red/5 transition-colors cursor-pointer"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <p className="text-[10px] text-forest/40 mt-1.5">
+                  Deja el enlace vacío para volver a mostrar la ilustración animada por defecto.
                 </p>
               </div>
 

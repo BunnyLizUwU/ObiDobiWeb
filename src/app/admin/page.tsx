@@ -11,7 +11,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { 
   getQuotes, updateQuoteStatus, updateQuoteRevisions, uploadReceiptUrl, getQuoteSettings,
   getCategories, getProducts, getMaterials, getProductMaterials, createProduct, updateProduct, deleteProduct,
-  createMaterial, updateMaterial, deleteMaterial
+  createMaterial, updateMaterial, deleteMaterial, uploadProductImage
 } from '../../lib/db';
 import { Quote, QuoteStatus, QuoteSettings, Product, Material, Category } from '../../lib/types';
 import LogoBubbles from '../../components/LogoBubbles';
@@ -56,6 +56,27 @@ export default function AdminDashboard() {
   const [prodSelectedMaterials, setProdSelectedMaterials] = useState<Record<string, number>>({});
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [prodImageUrl, setProdImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const publicUrl = await uploadProductImage(file);
+      if (publicUrl) {
+        setProdImageUrl(publicUrl);
+      } else {
+        alert('No se pudo subir la imagen. Verifica que el bucket "products" esté configurado en tu Supabase.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al subir la imagen.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   
   // Filters & Search
@@ -1069,9 +1090,37 @@ export default function AdminDashboard() {
                         <textarea required placeholder="Escribe para qué sirve y qué incluye..." value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-forest/15 text-sm font-medium focus:outline-none focus:border-logo-pink h-20" />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-forest/60 uppercase mb-1.5">URL de la Imagen del Producto (Opcional)</label>
-                        <input type="url" placeholder="ej. https://tudominio.com/fotos/producto1.jpg" value={prodImageUrl} onChange={(e) => setProdImageUrl(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink" />
+                      <div className="flex flex-col gap-3 p-4 border border-forest/10 rounded-2xl bg-zinc-50/50">
+                        <label className="block text-xs font-bold text-forest/70 uppercase">Foto del Producto</label>
+                        
+                        <div>
+                          <label className="block text-[10px] font-bold text-forest/40 uppercase mb-1">Subir desde tu dispositivo</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            disabled={uploadingImage} 
+                            onChange={handleImageFileChange} 
+                            className="w-full text-xs text-forest/70 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-logo-pink/10 file:text-logo-pink hover:file:bg-logo-pink/20 cursor-pointer" 
+                          />
+                          {uploadingImage && <span className="text-[10px] text-logo-pink font-semibold mt-1 block animate-pulse">Subiendo foto...</span>}
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-forest/40 uppercase mb-1">O pegar enlace (URL)</label>
+                          <input 
+                            type="url" 
+                            placeholder="ej. https://tudominio.com/fotos/producto1.jpg" 
+                            value={prodImageUrl} 
+                            onChange={(e) => setProdImageUrl(e.target.value)} 
+                            className="w-full px-4 py-2.5 rounded-xl border border-forest/15 text-sm font-semibold focus:outline-none focus:border-logo-pink bg-white" 
+                          />
+                        </div>
+                        {prodImageUrl.trim() && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <img src={prodImageUrl} alt="Vista previa" className="h-14 w-14 object-cover rounded-lg border border-forest/10" onError={(e) => {(e.target as any).src = 'https://placehold.co/100/f5f5f5/a3a3a3?text=Error';}} />
+                            <button type="button" onClick={() => setProdImageUrl('')} className="text-xs text-logo-red font-bold hover:underline cursor-pointer">Limpiar imagen</button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -549,3 +549,39 @@ export async function uploadReceiptUrl(quoteId: string, paymentReceiptUrl: strin
   }
   return false;
 }
+
+export async function uploadProductImage(file: File): Promise<string | null> {
+  if (isSupabaseConfigured) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const filePath = `images/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('products')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Error uploading image to Supabase Storage:', error);
+      return null;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('products')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  }
+
+  // Fallback local: Devolver base64
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
