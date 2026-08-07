@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, KeyRound, Sparkles, AlertCircle } from 'lucide-react';
+import { Lock, Mail, KeyRound, Sparkles, AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
 import LogoBubbles from '../../../components/LogoBubbles';
 
@@ -117,6 +117,14 @@ export default function AdminLogin() {
             <Lock className="w-4 h-4 text-logo-yellow" />
             {loading ? 'Validando...' : 'Iniciar Sesión'}
           </button>
+
+          <a
+            href="/"
+            className="mt-4 text-center text-xs font-black uppercase tracking-wider text-forest/40 hover:text-logo-pink flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Volver al inicio
+          </a>
         </form>
 
       </div>
