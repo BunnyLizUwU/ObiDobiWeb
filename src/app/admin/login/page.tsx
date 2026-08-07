@@ -61,7 +61,9 @@ export default function AdminLogin() {
         <div className="absolute top-0 right-0 w-24 h-24 bg-logo-pink/5 rounded-full blur-xl" />
         
         <div className="text-center flex flex-col items-center gap-4">
-          <LogoBubbles size="sm" className="scale-95" />
+          <a href="/" className="hover:opacity-90 transition-opacity" title="Ir a la página principal">
+            <LogoBubbles size="sm" className="scale-95" />
+          </a>
           <div>
             <h1 className="text-xl font-bold text-forest mt-2">Panel de Administración</h1>
             <p className="text-xs text-forest/50">Área exclusiva para Debanhi</p>
