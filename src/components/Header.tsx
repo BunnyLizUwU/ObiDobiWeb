@@ -1,14 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X, Lock, Sparkles, Calculator, BookOpen } from 'lucide-react';
 import LogoBubbles from './LogoBubbles';
+import { supabase } from '../lib/supabase';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      const localLogged = sessionStorage.getItem('obidobi_admin_logged') === 'true';
+      if (user || localLogged) {
+        setIsLoggedIn(true);
+      } else {
+        setIsLoggedIn(false);
+      }
+    }
+    checkAuth();
+  }, [pathname]);
 
   const links = [
     { href: '/', label: 'Inicio', icon: Sparkles, hoverClass: 'hover:bg-primary-blue/15 hover:text-primary-blue', activeClass: 'bg-primary-blue text-white shadow-sm' },
@@ -56,10 +71,23 @@ export default function Header() {
         <div className="hidden md:flex items-center gap-4">
           <Link
             href="/admin"
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-forest border-2 border-logo-pink hover:bg-logo-pink hover:text-cream rounded-xl transition-all duration-300 shadow-sm"
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm border-2 ${
+              isLoggedIn
+                ? 'border-logo-green bg-logo-green/10 text-forest hover:bg-logo-green/20'
+                : 'border-logo-pink hover:bg-logo-pink hover:text-cream text-forest'
+            }`}
           >
-            <Lock className="w-3.5 h-3.5" />
-            Panel Admin
+            {isLoggedIn ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-logo-green animate-pulse" />
+                Panel Admin (Activo)
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5" />
+                Panel Admin
+              </>
+            )}
           </Link>
         </div>
 
@@ -67,10 +95,19 @@ export default function Header() {
         <div className="md:hidden flex items-center gap-2">
           <Link
             href="/admin"
-            className="p-2 rounded-xl text-forest hover:bg-forest/5"
+            className={`p-2 rounded-xl transition-all ${
+              isLoggedIn ? 'text-logo-green bg-logo-green/10' : 'text-forest hover:bg-forest/5'
+            }`}
             aria-label="Panel Administrador"
           >
-            <Lock className="w-5 h-5" />
+            {isLoggedIn ? (
+              <div className="relative">
+                <Lock className="w-5 h-5" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-logo-green border border-white" />
+              </div>
+            ) : (
+              <Lock className="w-5 h-5" />
+            )}
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
