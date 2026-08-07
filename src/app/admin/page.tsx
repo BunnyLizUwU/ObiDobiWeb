@@ -469,7 +469,9 @@ export default function AdminDashboard() {
       {/* HEADER DE PANEL */}
       <header className="bg-forest text-cream px-6 py-4 flex items-center justify-between border-b border-white/10 shadow">
         <div className="flex items-center gap-4">
-          <LogoBubbles size="sm" className="scale-90 origin-left" />
+          <a href="/" className="hover:opacity-90 transition-opacity" title="Ir a la página principal">
+            <LogoBubbles size="sm" className="scale-90 origin-left" />
+          </a>
           <div className="hidden sm:block w-px h-8 bg-white/20" />
           <div className="hidden sm:block text-xs text-cream/70 font-semibold tracking-widest uppercase">
             Panel de Control
